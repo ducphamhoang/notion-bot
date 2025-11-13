@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "notion-bot"
+version = "0.1.0"
+description = "Centralized task management bot integrated with Notion API."
+authors = ["Your Name <you@example.com>"]
+readme = "prd.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.104.1"
+uvicorn = {extras = ["standard"], version = "^0.24.0"}
+notion-client = "^2.0.0" # Official Notion SDK
+motor = "^3.3.0" # Async MongoDB driver
+pydantic = "^2.0.0"
+pydantic-settings = "^2.1.0" # For managing settings/env variables
+structlog = "^23.2.0" # For structured JSON logging
+python-dotenv = "^1.0.0" # For .env file loading
+python-jose = {extras = ["cryptography"], version = "^3.3.0"} # For JWT/OAuth
+passlib = {extras = ["bcrypt"], version = "^1.7.4"} # For hashing secrets
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.3"
+pytest-asyncio = "^0.21.0" # For async tests
+httpx = "^0.25.0" # For testing FastAPI
+requests = "^2.31.0" # For testing API endpoints
+black = "^23.11.0"
+ruff = "^0.1.6"
+mypy = "^1.7.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
