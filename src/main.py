@@ -14,6 +14,8 @@ import structlog
 from src.config.settings import get_settings
 from src.core.database.connection import DatabaseConnection
 from src.core.errors.error_handler import global_exception_handler
+from src.core.monitoring.metrics import get_metrics_collector, get_health_cache
+from src.core.notion.client import test_notion_connection
 from src.features.tasks.routes import router as tasks_router
 from src.features.workspaces.routes import router as workspaces_router
 from src.features.users.routes import router as users_router
@@ -132,17 +134,23 @@ def create_app() -> FastAPI:
         
         return response
     
-    # Add logging middleware
+    # Add logging and metrics middleware
     @app.middleware("http")
-    async def log_responses(request: Request, call_next):
-        """Log API responses with timing."""
+    async def log_responses_and_collect_metrics(request: Request, call_next):
+        """Log API responses with timing and collect metrics."""
         import time
         
         start_time = time.time()
+        metrics = get_metrics_collector()
+        endpoint = f"{request.method} {request.url.path}"
         
         try:
             response = await call_next(request)
             duration = time.time() - start_time
+            
+            # Record metrics
+            await metrics.record_request_duration(endpoint, duration)
+            await metrics.record_status_code(endpoint, response.status_code)
             
             logger.info(
                 "API response",
@@ -155,6 +163,11 @@ def create_app() -> FastAPI:
             return response
         except Exception as e:
             duration = time.time() - start_time
+            
+            # Record error metrics (500 status code)
+            await metrics.record_request_duration(endpoint, duration)
+            await metrics.record_status_code(endpoint, 500)
+            
             logger.error(
                 "API error",
                 method=request.method,
@@ -181,9 +194,17 @@ def create_app() -> FastAPI:
         """Check the health of the application and its dependencies."""
         db_health = await DatabaseConnection.health_check()
         
+        # Check Notion API connectivity with caching (30s TTL)
+        cache = get_health_cache()
+        notion_health = await cache.get("notion_api")
+        
+        if notion_health is None:
+            notion_health = await test_notion_connection()
+            await cache.set("notion_api", notion_health)
+        
         # Overall status is unhealthy if any component is unhealthy
         overall_status = "healthy"
-        if db_health["status"] != "healthy":
+        if db_health["status"] != "healthy" or notion_health["status"] != "healthy":
             overall_status = "unhealthy"
         
         return JSONResponse(
@@ -191,9 +212,24 @@ def create_app() -> FastAPI:
             content={
                 "status": overall_status,
                 "checks": {
-                    "database": db_health
+                    "database": db_health,
+                    "notion": notion_health
                 }
             }
+        )
+    
+    # Metrics endpoint
+    @app.get("/metrics", tags=["monitoring"], summary="Prometheus metrics")
+    async def metrics_endpoint():
+        """Export metrics in Prometheus text format."""
+        from fastapi import Response
+        
+        metrics = get_metrics_collector()
+        prometheus_metrics = await metrics.get_prometheus_metrics()
+        
+        return Response(
+            content=prometheus_metrics,
+            media_type="text/plain; version=0.0.4"
         )
     
     # Root endpoint

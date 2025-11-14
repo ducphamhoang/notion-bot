@@ -9,6 +9,7 @@ from typing import Any, Callable, Coroutine, TypeVar
 from notion_client import APIResponseError
 
 from src.core.errors.exceptions import RateLimitError
+from src.core.monitoring.metrics import get_metrics_collector
 
 logger = logging.getLogger(__name__)
 
@@ -37,15 +38,21 @@ def with_retry(
         @wraps(func)
         async def wrapper(*args, **kwargs) -> T:
             last_error = None
+            metrics = get_metrics_collector()
             
             for attempt in range(max_retries + 1):
                 try:
+                    # Track Notion API call
+                    await metrics.increment_notion_api_calls()
                     return await func(*args, **kwargs)
                 except APIResponseError as e:
                     last_error = e
                     
                     # Check if it's a rate limit error (429)
                     if e.status == 429 or "rate_limit" in str(e.body).lower():
+                        # Track rate limit hit
+                        await metrics.increment_rate_limit_hits()
+                        
                         if attempt < max_retries:
                             # Calculate exponential backoff with jitter
                             delay = min(

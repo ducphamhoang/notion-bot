@@ -18,7 +18,9 @@
       "Bash(pip freeze:*)",
       "Bash(requirements.txt)",
       "Bash(chmod:*)",
-      "Bash(docker build:*)"
+      "Bash(docker build:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []
