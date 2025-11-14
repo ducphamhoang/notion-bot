@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # MongoDB Database
   mongodb:
     image: mongo:7.0
     container_name: notion-bot-mongodb
@@ -16,6 +17,51 @@ services:
       - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     networks:
       - notion-bot-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Notion Bot API Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: notion-bot-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # MongoDB connection (using service name)
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/notion-bot?authSource=admin
+
+      # Notion API (set these in .env or here)
+      NOTION_API_KEY: ${NOTION_API_KEY:-secret_your_notion_integration_token}
+      NOTION_API_VERSION: 2022-10-28
+
+      # API Configuration
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+      # CORS (update for production)
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8000}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - notion-bot-network
+    volumes:
+      # Mount source code for development (comment out for production)
+      - ./src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 networks:
   notion-bot-network:

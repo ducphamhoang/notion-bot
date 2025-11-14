@@ -1,0 +1,93 @@
+version: '3.8'
+
+# Production Docker Compose Configuration
+# DO NOT use this for development - use docker-compose.yml instead
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: notion-bot-mongodb-prod
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD is required}
+      MONGO_INITDB_DATABASE: notion-bot
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - ./mongodb-backup:/backup  # Backup directory
+    networks:
+      - notion-bot-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Notion Bot API Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: notion-bot-api:latest
+    container_name: notion-bot-api-prod
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      # MongoDB connection
+      MONGODB_URI: mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD}@mongodb:27017/notion-bot?authSource=admin
+
+      # Notion API
+      NOTION_API_KEY: ${NOTION_API_KEY:?NOTION_API_KEY is required}
+      NOTION_API_VERSION: 2022-10-28
+
+      # API Configuration
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      DEBUG: false
+      LOG_LEVEL: ${LOG_LEVEL:-WARNING}
+
+      # CORS - MUST be configured for production
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - notion-bot-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    # Resource limits for production
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  notion-bot-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local

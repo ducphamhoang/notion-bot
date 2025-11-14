@@ -7,8 +7,10 @@ from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import JSONResponse
 
 # Exception handlers are handled globally in main.py
+from src.core.database.connection import DatabaseConnection
 from src.features.workspaces.dto.create_workspace_request import CreateWorkspaceRequest
 from src.features.workspaces.dto.workspace_response import WorkspaceResponse, WorkspaceListResponse
+from src.features.workspaces.repository import WorkspaceRepository
 from src.features.workspaces.services.workspace_service import WorkspaceService
 
 logger = logging.getLogger(__name__)
@@ -18,7 +20,9 @@ router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 
 async def get_workspace_service() -> WorkspaceService:
     """Dependency injection for workspace service."""
-    return WorkspaceService()
+    db_connection = DatabaseConnection()
+    repository = WorkspaceRepository(await db_connection.get_database())
+    return WorkspaceService(repository=repository)
 
 
 @router.post(

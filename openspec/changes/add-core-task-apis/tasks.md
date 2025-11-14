@@ -245,36 +245,36 @@
 > **Dependencies:** Foundation (workspace repository from 1.1)
 
 ### 5.1 Create workspace configuration models
-- [ ] Enhance Workspace model from 1.1 if needed
-- [ ] Create `src/features/workspaces/dto/create_workspace_request.py|ts`:
+- [x] Enhance Workspace model from 1.1 if needed
+- [x] Create `src/features/workspaces/dto/create_workspace_request.py|ts`:
   - `platform: str`, `platform_id: str`, `notion_database_id: str`, `name: str`
-- [ ] Create `src/features/workspaces/dto/workspace_response.py|ts`
+- [x] Create `src/features/workspaces/dto/workspace_response.py|ts`
 - **Acceptance:** Models validated correctly
 
 ### 5.2 Implement workspace service
-- [ ] Create `src/features/workspaces/services/workspace_service.py|ts`
-- [ ] Implement `create_workspace(request) -> WorkspaceResponse`
-- [ ] Implement `get_workspace_by_platform(platform, platform_id) -> WorkspaceResponse`
-- [ ] Handle duplicate workspace creation (409 Conflict)
-- [ ] Validate Notion database exists by querying Notion API
+- [x] Create `src/features/workspaces/services/workspace_service.py|ts`
+- [x] Implement `create_workspace(request) -> WorkspaceResponse`
+- [x] Implement `get_workspace_by_platform(platform, platform_id) -> WorkspaceResponse`
+- [x] Handle duplicate workspace creation (409 Conflict)
+- [x] Validate Notion database exists by querying Notion API
 - **Acceptance:** Can create and retrieve workspace mapping
 
 ### 5.3 Implement workspace API endpoints
-- [ ] Add POST `/workspaces` to create workspace mapping
-- [ ] Add GET `/workspaces?platform={p}&platform_id={id}` to retrieve mapping
-- [ ] Add GET `/workspaces` to list all workspaces
+- [x] Add POST `/workspaces` to create workspace mapping
+- [x] Add GET `/workspaces?platform={p}&platform_id={id}` to retrieve mapping
+- [x] Add GET `/workspaces` to list all workspaces
 - **Acceptance:** Can configure workspace via API
 
 ### 5.4 Write tests for workspace feature
-- [ ] Integration test: Create workspace mapping succeeds
-- [ ] Integration test: Duplicate workspace returns 409
-- [ ] Integration test: Query by platform_id returns correct workspace
-- [ ] Integration test: Invalid Notion database ID fails validation
+- [x] Integration test: Create workspace mapping succeeds
+- [x] Integration test: Duplicate workspace returns 409
+- [x] Integration test: Query by platform_id returns correct workspace
+- [x] Integration test: Invalid Notion database ID fails validation
 - **Acceptance:** All tests pass
 
 ### 5.5 Document workspace endpoints
-- [ ] Add OpenAPI schemas for workspace endpoints
-- [ ] Document workspace configuration flow
+- [x] Add OpenAPI schemas for workspace endpoints
+- [x] Document workspace configuration flow
 - **Acceptance:** Swagger UI shows workspace endpoints
 
 ---
@@ -307,33 +307,40 @@
 - **Acceptance:** DTOs validate correctly
 
 ### 6.3 Implement user mapping service
-- [ ] Create `src/features/users/services/user_mapping_service.py|ts`
-- [ ] Implement `create_mapping(request) -> UserMappingResponse`
-- [ ] Implement `resolve_notion_user_id(platform, platform_user_id) -> str`
-- [ ] Handle missing mapping gracefully (return clear error)
+- [x] Create `src/features/users/services/user_mapping_service.py|ts`
+- [x] Implement `create_mapping(request) -> UserMappingResponse`
+- [x] Implement `resolve_notion_user_id(platform, platform_user_id) -> str`
+- [x] Handle missing mapping gracefully (return clear error)
 - **Acceptance:** Can create mapping and resolve user IDs
 
 ### 6.4 Integrate user mapping with task creation
-- [ ] Modify NotionTaskService.create_task to resolve assignee_id via user mapping
-- [ ] If assignee_id provided but no mapping exists, return 400 with clear error
+- [x] Modify NotionTaskService.create_task to resolve assignee_id via user mapping
+- [x] If assignee_id provided but no mapping exists, return 400 with clear error
 - **Acceptance:** Create task with assignee uses mapped Notion user ID
 
 ### 6.5 Implement user mapping API endpoints
-- [ ] Add POST `/users/mappings` to create mapping
-- [ ] Add GET `/users/mappings?platform={p}&platform_user_id={id}` to query
-- [ ] Add GET `/users/mappings` to list all mappings
+- [x] Add POST `/users/mappings` to create mapping
+- [x] Add GET `/users/mappings?platform={p}&platform_user_id={id}` to query
+- [x] Add GET `/users/mappings` to list all mappings
+- [x] Add GET `/users/mappings/{id}` to get mapping by ID
+- [x] Add GET `/users/mappings/resolve` to resolve user mapping
 - **Acceptance:** Can manage user mappings via API
 
 ### 6.6 Write tests for user mapping feature
-- [ ] Integration test: Create user mapping succeeds
-- [ ] Integration test: Resolve Notion user ID works
-- [ ] Integration test: Task creation with valid assignee mapping works
-- [ ] Integration test: Task creation with missing assignee mapping returns 400
+- [x] Unit test: Create user mapping succeeds
+- [x] Unit test: Resolve Notion user ID works
+- [x] Unit test: Get mapping by platform and user ID works
+- [x] Unit test: Get mapping by ID works
+- [x] Unit test: List mappings works
+- [x] Integration test: Create user mapping succeeds
+- [x] Integration test: Resolve Notion user ID works
+- [x] Integration test: Task creation with valid assignee mapping works
+- [x] Integration test: Task creation with missing assignee mapping returns 400
 - **Acceptance:** All tests pass
 
 ### 6.7 Document user mapping endpoints
-- [ ] Add OpenAPI schemas
-- [ ] Document user mapping configuration flow
+- [x] Add OpenAPI schemas
+- [x] Document user mapping configuration flow
 - **Acceptance:** Swagger UI shows user mapping endpoints
 
 ---
@@ -443,14 +450,14 @@
 - **Feature 2 (List Tasks):** 6 tasks ✅ **COMPLETED**
 - **Feature 3 (Update Task):** 5 tasks ✅ **COMPLETED**
 - **Feature 4 (Delete Task):** 4 tasks ✅ **COMPLETED**
-- **Feature 5 (Workspace Management):** 5 tasks ⚠️ **PARTIAL** (models done, routes/service TBD)
-- **Feature 6 (User Mapping):** 7 tasks ⚠️ **PARTIAL** (2/7 tasks completed: models and DTOs)
+- **Feature 5 (Workspace Management):** 5 tasks ✅ **COMPLETED**
+- **Feature 6 (User Mapping):** 7 tasks ✅ **COMPLETED**
 - **Cross-Cutting:** 5 tasks ⚠️ **MOSTLY DONE** (4/5 complete, metrics pending)
 - **Documentation & Deployment:** 5 tasks ⚠️ **PARTIAL** (2/5 complete)
 
 **Total: 48 tasks**
-**Completed: ~37 tasks (77%)**
-**Remaining: ~11 tasks (23%)**
+**Completed: ~44 tasks (92%)**
+**Remaining: ~4 tasks (8%)**
 
 ---
 
@@ -463,11 +470,11 @@
 | 2. List Tasks | ✅ Complete | 6/6 (100%) |
 | 3. Update Task | ✅ Complete | 5/5 (100%) |
 | 4. Delete Task | ✅ Complete | 4/4 (100%) |
-| 5. Workspace Mgmt | ⚠️ Partial | 2/5 (40%) |
-| 6. User Mapping | ⚠️ Partial | 2/7 (29%) |
+| 5. Workspace Mgmt | ✅ Complete | 5/5 (100%) |
+| 6. User Mapping | ✅ Complete | 7/7 (100%) |
 | 7. Cross-Cutting | ⚠️ Mostly Done | 4/5 (80%) |
 | 8. Documentation | ⚠️ Partial | 2/5 (40%) |
-| **TOTAL** | **In Progress** | **~37/48 (77%)** |
+| **TOTAL** | **In Progress** | **~44/48 (92%)** |
 
 ---
 
@@ -475,7 +482,5 @@
 
 To complete the MVP, implement features in this order:
 
-1. **Feature 6: User Mapping** (5 remaining tasks) - High Priority
-2. **Complete Workspace Management** (3 remaining tasks) - High Priority
-3. **Add Metrics** (1 task from Cross-Cutting) - Medium Priority
-4. **Finalize Documentation** (3 remaining tasks) - Before Production
+1. **Add Metrics** (1 task from Cross-Cutting) - Medium Priority
+2. **Finalize Documentation** (3 remaining tasks) - Before Production

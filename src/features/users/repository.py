@@ -101,8 +101,36 @@ class UserMappingRepository:
     async def delete_mapping(self, mapping_id: str) -> bool:
         """Delete a user mapping by its database ID."""
         from bson import ObjectId
-        
+
         collection = await self.get_collection()
-        
+
         result = await collection.delete_one({"_id": ObjectId(mapping_id)})
         return result.deleted_count > 0
+
+    async def list_mappings(
+        self,
+        platform: Optional[str] = None,
+        platform_user_id: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 20
+    ) -> tuple[list[UserMappingInDB], int]:
+        """List user mappings with optional filtering and pagination."""
+        collection = await self.get_collection()
+
+        # Build query based on filters
+        query = {}
+        if platform:
+            query["platform"] = platform
+        if platform_user_id:
+            query["platform_user_id"] = platform_user_id
+
+        # Get total count
+        total = await collection.count_documents(query)
+
+        # Get paginated results
+        cursor = collection.find(query).skip(skip).limit(limit)
+        documents = await cursor.to_list(length=limit)
+
+        mappings = [UserMappingInDB(**doc) for doc in documents]
+
+        return mappings, total

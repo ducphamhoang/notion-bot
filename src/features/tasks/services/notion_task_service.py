@@ -22,6 +22,7 @@ from src.features.tasks.dto.list_tasks_request import ListTasksRequest
 from src.features.tasks.dto.list_tasks_response import ListTasksResponse, TaskSummary
 from src.features.tasks.dto.update_task_request import UpdateTaskRequest
 from src.features.tasks.dto.update_task_response import UpdateTaskResponse
+from src.features.users.services.user_mapping_service import UserMappingService
 
 logger = logging.getLogger(__name__)
 
@@ -38,14 +39,16 @@ class NotionTaskService:
         "project": "Project",
     }
 
-    def __init__(self, notion_client: Optional[AsyncClient] = None):
+    def __init__(self, notion_client: Optional[AsyncClient] = None, user_mapping_service: Optional[UserMappingService] = None):
         """
         Initialize NotionTaskService.
 
         Args:
             notion_client: Notion client instance (injected for DI)
+            user_mapping_service: User mapping service for resolving assignees (injected for DI)
         """
         self._notion_client = notion_client
+        self._user_mapping_service = user_mapping_service
 
     async def _get_client(self) -> AsyncClient:
         """Get Notion client instance, creating if not injected."""
@@ -79,25 +82,31 @@ class NotionTaskService:
             # Get client
             client = await self._get_client()
 
-            # TODO: Resolve assignee_id via user mapping service (Feature 6)
-            # When user mapping service is implemented:
-            # if request.assignee_id:
-            #     from features.users.services.user_mapping_service import UserMappingService
-            #     user_service = UserMappingService()
-            #     notion_assignee_id = await user_service.resolve_notion_user_id(
-            #         platform="web",
-            #         platform_user_id=request.assignee_id
-            #     )
+            # Resolve assignee_id via user mapping service if provided
+            resolved_assignee_id = None
+            if request.assignee_id:
+                if not self._user_mapping_service:
+                    # For backward compatibility and testing, allow assignee_id to be used directly
+                    # when user mapping service is not configured
+                    # In production, the user mapping service should be configured
+                    resolved_assignee_id = request.assignee_id
+                else:
+                    # For now, we'll assume platform is "web" for direct API usage
+                    # In future, we can make this configurable or determine from context
+                    resolved_assignee_id = await self._user_mapping_service.resolve_notion_user_id(
+                        platform="web",
+                        platform_user_id=request.assignee_id
+                    )
 
-            # Build Notion properties
-            properties = self._build_notion_properties(request)
+            # Build Notion properties with resolved assignee ID
+            properties = self._build_notion_properties(request, None, resolved_assignee_id)
 
             # Create the page in Notion
             notion_page = await client.pages.create(
                 parent={"database_id": request.notion_database_id},
                 properties=properties
             )
-            
+
             # Return response
             return CreateTaskResponse(
                 notion_task_id=notion_page["id"],
@@ -129,6 +138,7 @@ class NotionTaskService:
         self,
         request: CreateTaskRequest,
         property_mappings: Optional[Dict[str, str]] = None,
+        resolved_assignee_id: Optional[str] = None,
     ) -> dict:
         """
         Build Notion page properties from request.
@@ -136,6 +146,7 @@ class NotionTaskService:
         Args:
             request: Task creation request
             property_mappings: Optional custom property name mappings
+            resolved_assignee_id: Resolved Notion user ID for assignee (if any)
 
         Returns:
             Dictionary of Notion properties
@@ -166,11 +177,11 @@ class NotionTaskService:
                 }
             }
 
-        # TODO: Add assignee handling when user mapping service is implemented
-        # if request.assignee_id and notion_assignee_id:
-        #     properties[property_mappings["assignee"]] = {
-        #         "people": [{"id": notion_assignee_id}]
-        #     }
+        # Add assignee if resolved
+        if resolved_assignee_id:
+            properties[resolved_mappings["assignee"]] = {
+                "people": [{"id": resolved_assignee_id}]
+            }
 
         # Merge custom properties (takes precedence)
         if request.properties:
@@ -414,7 +425,23 @@ class NotionTaskService:
         try:
             client = await self._get_client()
             resolved_mappings = self._resolve_property_mappings(property_mappings)
-            properties = self._build_update_properties(request, resolved_mappings)
+
+            # Handle assignee resolution if needed
+            resolved_assignee_id = None
+            if request.assignee_id:
+                if not self._user_mapping_service:
+                    # For backward compatibility and testing, allow assignee_id to be used directly
+                    # when user mapping service is not configured
+                    # In production, the user mapping service should be configured
+                    resolved_assignee_id = request.assignee_id
+                else:
+                    resolved_assignee_id = await self._user_mapping_service.resolve_notion_user_id(
+                        platform="web",
+                        platform_user_id=request.assignee_id
+                    )
+
+            # Build update properties with resolved assignee ID
+            properties = self._build_update_properties(request, resolved_mappings, resolved_assignee_id)
 
             if not properties:
                 raise ValidationError("No fields to update")
@@ -457,6 +484,7 @@ class NotionTaskService:
         self,
         request: UpdateTaskRequest,
         property_mappings: Dict[str, str],
+        resolved_assignee_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Build Notion properties payload for updates."""
         properties: Dict[str, Any] = {}
@@ -474,9 +502,10 @@ class NotionTaskService:
                 "date": {"start": request.due_date.isoformat()}
             }
 
-        if request.assignee_id:
+        # Use the resolved_assignee_id that was already obtained in the calling method
+        if resolved_assignee_id:
             properties[property_mappings["assignee"]] = {
-                "people": [{"id": request.assignee_id}]
+                "people": [{"id": resolved_assignee_id}]
             }
 
         if request.properties:

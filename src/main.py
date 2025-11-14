@@ -16,6 +16,7 @@ from src.core.database.connection import DatabaseConnection
 from src.core.errors.error_handler import global_exception_handler
 from src.features.tasks.routes import router as tasks_router
 from src.features.workspaces.routes import router as workspaces_router
+from src.features.users.routes import router as users_router
 
 
 # Configure structured logging
@@ -166,6 +167,7 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(tasks_router)
     app.include_router(workspaces_router)
+    app.include_router(users_router)
     
     # Global exception handler
     @app.exception_handler(Exception)
