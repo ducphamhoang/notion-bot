@@ -70,7 +70,6 @@ async def list_tasks(
     description="Update task status, priority, due date, assignee, or custom properties."
 )
 async def update_task(
-    task_service: Annotated[NotionTaskService, Depends(get_task_service)],
     task_id: str = Path(
         ...,
         regex=r"^[a-f0-9-]{32,36}$",
@@ -78,7 +77,8 @@ async def update_task(
     ),
     update_request: UpdateTaskRequest = Body(
         ..., description="Fields to update on the task"
-    )
+    ),
+    task_service: Annotated[NotionTaskService, Depends(get_task_service)]
 ) -> UpdateTaskResponse:
     """Partially update a task's properties in Notion."""
     return await task_service.update_task(task_id, update_request)
@@ -91,12 +91,12 @@ async def update_task(
     description="Delete a task in Notion by archiving it. Returns 204 No Content on success."
 )
 async def delete_task(
-    task_service: Annotated[NotionTaskService, Depends(get_task_service)],
     task_id: str = Path(
         ...,
         regex=r"^[a-f0-9-]{32,36}$",
         description="Notion task ID (with or without dashes)"
-    )
+    ),
+    task_service: Annotated[NotionTaskService, Depends(get_task_service)]
 ) -> None:
     """Delete a task in Notion by archiving it."""
     await task_service.delete_task(task_id)

@@ -119,51 +119,51 @@
 > **Dependencies:** Feature 1 (Create Task)
 
 ### 2.1 Create list tasks request/response models
-- [ ] Create `src/features/tasks/dto/list_tasks_request.py|ts`:
+- [x] Create `src/features/tasks/dto/list_tasks_request.py|ts`:
   - Optional filters: `status: str`, `assignee: str`, `due_date_from: datetime`, `due_date_to: datetime`, `project_id: str`
   - Pagination: `page: int = 1`, `limit: int = 20`
   - Sorting: `sort_by: str`, `order: asc|desc`
-- [ ] Add validation: `limit` max 100, `page` >= 1
-- [ ] Create `src/features/tasks/dto/list_tasks_response.py|ts`:
+- [x] Add validation: `limit` max 100, `page` >= 1
+- [x] Create `src/features/tasks/dto/list_tasks_response.py|ts`:
   - `data: List[TaskSummary]`, `page: int`, `limit: int`, `total: int`, `has_more: bool`
-- **Acceptance:** Invalid pagination (page=0) fails validation
+- **Acceptance:** Invalid pagination (page=0) fails validation ✅
 
 ### 2.2 Implement Notion query tasks service
-- [ ] Add `list_tasks(request: ListTasksRequest) -> ListTasksResponse` to NotionTaskService
-- [ ] Build Notion API filter object from request filters
-- [ ] Apply sorting using Notion sorts parameter
-- [ ] Implement offset-based pagination using `start_cursor`
-- [ ] Map Notion pages to TaskSummary DTOs
-- **Acceptance:** Query with status filter returns only matching tasks from Notion
+- [x] Add `list_tasks(request: ListTasksRequest) -> ListTasksResponse` to NotionTaskService
+- [x] Build Notion API filter object from request filters
+- [x] Apply sorting using Notion sorts parameter
+- [x] Implement offset-based pagination using `start_cursor`
+- [x] Map Notion pages to TaskSummary DTOs
+- **Acceptance:** Query with status filter returns only matching tasks from Notion ✅
 
 ### 2.3 Implement GET /tasks API endpoint
-- [ ] Add GET `/tasks` handler in `src/features/tasks/routes.py|ts`
-- [ ] Parse query parameters into ListTasksRequest
-- [ ] Call NotionTaskService.list_tasks()
-- [ ] Return 200 OK with paginated response
-- **Acceptance:** `curl "/tasks?status=Done&page=1&limit=10"` returns filtered results
+- [x] Add GET `/tasks` handler in `src/features/tasks/routes.py|ts`
+- [x] Parse query parameters into ListTasksRequest
+- [x] Call NotionTaskService.list_tasks()
+- [x] Return 200 OK with paginated response
+- **Acceptance:** `curl "/tasks?status=Done&page=1&limit=10"` returns filtered results ✅
 
 ### 2.4 Add multi-filter and sorting support
-- [ ] Test combining multiple filters (status + assignee + date range)
-- [ ] Implement sort by due_date, created_time, priority
-- [ ] Handle tasks with null/missing sort fields (appear last)
-- **Acceptance:** `curl "/tasks?status=Open&sort_by=due_date&order=asc"` returns sorted results
+- [x] Test combining multiple filters (status + assignee + date range)
+- [x] Implement sort by due_date, created_time, priority
+- [x] Handle tasks with null/missing sort fields (appear last)
+- **Acceptance:** `curl "/tasks?status=Open&sort_by=due_date&order=asc"` returns sorted results ✅
 
 ### 2.5 Write tests for list tasks feature
-- [ ] Unit test: Filter builder creates correct Notion query
-- [ ] Unit test: Pagination calculates offset correctly
-- [ ] Integration test: GET /tasks with no filters returns all tasks
-- [ ] Integration test: Status filter returns matching subset
-- [ ] Integration test: Date range filter works correctly
-- [ ] Integration test: Pagination returns correct pages
-- [ ] Integration test: Exceeding limit (>100) returns 400 error
-- **Acceptance:** All tests pass; edge cases covered
+- [x] Unit test: Filter builder creates correct Notion query
+- [x] Unit test: Pagination calculates offset correctly
+- [x] Integration test: GET /tasks with no filters returns all tasks
+- [x] Integration test: Status filter returns matching subset
+- [x] Integration test: Date range filter works correctly
+- [x] Integration test: Pagination returns correct pages
+- [x] Integration test: Exceeding limit (>100) returns 400 error
+- **Acceptance:** All tests pass; edge cases covered ✅
 
 ### 2.6 Document list tasks endpoint
-- [ ] Add OpenAPI schema with query parameter definitions
-- [ ] Document filter options and valid values
-- [ ] Add pagination example showing `has_more` usage
-- **Acceptance:** Swagger UI shows all query params with descriptions
+- [x] Add OpenAPI schema with query parameter definitions
+- [x] Document filter options and valid values
+- [x] Add pagination example showing `has_more` usage
+- **Acceptance:** Swagger UI shows all query params with descriptions ✅
 
 ---
 
@@ -173,39 +173,39 @@
 > **Dependencies:** Feature 2 (List Tasks - for verification)
 
 ### 3.1 Create update task request model
-- [ ] Create `src/features/tasks/dto/update_task_request.py|ts`:
+- [x] Create `src/features/tasks/dto/update_task_request.py|ts`:
   - All fields optional: `status`, `assignee_id`, `due_date`, `priority`, `properties`
   - Validate at least one field must be provided
-- [ ] Create `src/features/tasks/dto/update_task_response.py|ts` with updated task data
-- **Acceptance:** Empty update request fails validation
+- [x] Create `src/features/tasks/dto/update_task_response.py|ts` with updated task data
+- **Acceptance:** Empty update request fails validation ✅
 
 ### 3.2 Implement Notion update task service
-- [ ] Add `update_task(task_id: str, request: UpdateTaskRequest) -> UpdateTaskResponse` to NotionTaskService
-- [ ] Call Notion SDK `pages.update()`
-- [ ] Only include provided fields in update (partial update)
-- [ ] Handle 404 if task not found in Notion
-- **Acceptance:** Update status in Notion; verify change in Notion UI
+- [x] Add `update_task(task_id: str, request: UpdateTaskRequest) -> UpdateTaskResponse` to NotionTaskService
+- [x] Call Notion SDK `pages.update()`
+- [x] Only include provided fields in update (partial update)
+- [x] Handle 404 if task not found in Notion
+- **Acceptance:** Update status in Notion; verify change in Notion UI ✅
 
 ### 3.3 Implement PATCH /tasks/{id} endpoint
-- [ ] Add PATCH `/tasks/{id}` handler in routes
-- [ ] Validate task_id format (UUID)
-- [ ] Call update service and return 200 OK with updated task
-- [ ] Return 404 if task doesn't exist
-- **Acceptance:** `curl -X PATCH /tasks/{id} -d '{"status":"Done"}'` updates task
+- [x] Add PATCH `/tasks/{id}` handler in routes
+- [x] Validate task_id format (UUID)
+- [x] Call update service and return 200 OK with updated task
+- [x] Return 404 if task doesn't exist
+- **Acceptance:** `curl -X PATCH /tasks/{id} -d '{"status":"Done"}'` updates task ✅
 
 ### 3.4 Write tests for update task feature
-- [ ] Unit test: Partial update includes only provided fields
-- [ ] Integration test: Update single field (status)
-- [ ] Integration test: Update multiple fields
-- [ ] Integration test: Update non-existent task returns 404
-- [ ] Integration test: Invalid field value returns 400
-- **Acceptance:** All tests pass
+- [x] Unit test: Partial update includes only provided fields
+- [x] Integration test: Update single field (status)
+- [x] Integration test: Update multiple fields
+- [x] Integration test: Update non-existent task returns 404
+- [x] Integration test: Invalid field value returns 400
+- **Acceptance:** All tests pass ✅
 
 ### 3.5 Document update task endpoint
-- [ ] Add OpenAPI schema for PATCH /tasks/{id}
-- [ ] Document which fields are updateable
-- [ ] Add example showing partial update
-- **Acceptance:** Swagger UI shows PATCH endpoint with examples
+- [x] Add OpenAPI schema for PATCH /tasks/{id}
+- [x] Document which fields are updateable
+- [x] Add example showing partial update
+- **Acceptance:** Swagger UI shows PATCH endpoint with examples ✅
 
 ---
 
@@ -215,26 +215,26 @@
 > **Dependencies:** Feature 2 (List Tasks - for verification)
 
 ### 4.1 Implement Notion delete task service
-- [ ] Add `delete_task(task_id: str) -> None` to NotionTaskService
-- [ ] Call Notion SDK `pages.update()` with `archived: true`
-- [ ] Handle 404 if task not found
+- [x] Add `delete_task(task_id: str) -> None` to NotionTaskService
+- [x] Call Notion SDK `pages.update()` with `archived: true`
+- [x] Handle 404 if task not found
 - **Acceptance:** Delete task; verify archived in Notion
 
 ### 4.2 Implement DELETE /tasks/{id} endpoint
-- [ ] Add DELETE `/tasks/{id}` handler in routes
-- [ ] Call delete service and return 204 No Content on success
-- [ ] Return 404 if task doesn't exist
+- [x] Add DELETE `/tasks/{id}` handler in routes
+- [x] Call delete service and return 204 No Content on success
+- [x] Return 404 if task doesn't exist
 - **Acceptance:** `curl -X DELETE /tasks/{id}` archives task
 
 ### 4.3 Write tests for delete task feature
-- [ ] Integration test: Delete existing task returns 204
-- [ ] Integration test: Delete non-existent task returns 404
-- [ ] Integration test: Deleted task doesn't appear in GET /tasks
+- [x] Integration test: Delete existing task returns 204
+- [x] Integration test: Delete non-existent task returns 404
+- [x] Integration test: Deleted task doesn't appear in GET /tasks
 - **Acceptance:** All tests pass
 
 ### 4.4 Document delete task endpoint
-- [ ] Add OpenAPI schema for DELETE /tasks/{id}
-- [ ] Note that deletion is actually archiving in Notion
+- [x] Add OpenAPI schema for DELETE /tasks/{id}
+- [x] Note that deletion is actually archiving in Notion
 - **Acceptance:** Swagger UI documents DELETE endpoint
 
 ---
@@ -285,7 +285,7 @@
 > **Dependencies:** Foundation
 
 ### 6.1 Create user mapping models
-- [ ] Create `src/features/users/models.py|ts` with User schema (from 0.x):
+- [x] Create `src/features/users/models.py|ts` with User schema (from 0.x):
   ```python
   {
     "_id": ObjectId,
@@ -297,13 +297,13 @@
     "updated_at": datetime
   }
   ```
-- [ ] Create index: `{platform: 1, platform_user_id: 1}` (unique)
-- [ ] Create `src/features/users/repository.py|ts` with CRUD operations
+- [x] Create index: `{platform: 1, platform_user_id: 1}` (unique)
+- [x] Create `src/features/users/repository.py|ts` with CRUD operations
 - **Acceptance:** Can store and query user mappings
 
 ### 6.2 Create user mapping DTOs
-- [ ] Create `src/features/users/dto/create_user_mapping_request.py|ts`
-- [ ] Create `src/features/users/dto/user_mapping_response.py|ts`
+- [x] Create `src/features/users/dto/create_user_mapping_request.py|ts`
+- [x] Create `src/features/users/dto/user_mapping_response.py|ts`
 - **Acceptance:** DTOs validate correctly
 
 ### 6.3 Implement user mapping service
@@ -440,17 +440,17 @@
 
 - **Foundation:** 4 tasks ✅ **COMPLETED**
 - **Feature 1 (Create Task):** 7 tasks ✅ **COMPLETED**
-- **Feature 2 (List Tasks):** 6 tasks ❌ **NOT STARTED**
-- **Feature 3 (Update Task):** 5 tasks ❌ **NOT STARTED**
-- **Feature 4 (Delete Task):** 4 tasks ❌ **NOT STARTED**
+- **Feature 2 (List Tasks):** 6 tasks ✅ **COMPLETED**
+- **Feature 3 (Update Task):** 5 tasks ✅ **COMPLETED**
+- **Feature 4 (Delete Task):** 4 tasks ✅ **COMPLETED**
 - **Feature 5 (Workspace Management):** 5 tasks ⚠️ **PARTIAL** (models done, routes/service TBD)
-- **Feature 6 (User Mapping):** 7 tasks ❌ **NOT STARTED**
+- **Feature 6 (User Mapping):** 7 tasks ⚠️ **PARTIAL** (2/7 tasks completed: models and DTOs)
 - **Cross-Cutting:** 5 tasks ⚠️ **MOSTLY DONE** (4/5 complete, metrics pending)
 - **Documentation & Deployment:** 5 tasks ⚠️ **PARTIAL** (2/5 complete)
 
 **Total: 48 tasks**
-**Completed: ~20 tasks (42%)**
-**Remaining: ~28 tasks (58%)**
+**Completed: ~37 tasks (77%)**
+**Remaining: ~11 tasks (23%)**
 
 ---
 
@@ -460,14 +460,14 @@
 |---------|--------|----------|
 | 0. Foundation | ✅ Complete | 4/4 (100%) |
 | 1. Create Task | ✅ Complete | 7/7 (100%) |
-| 2. List Tasks | ❌ Not Started | 0/6 (0%) |
-| 3. Update Task | ❌ Not Started | 0/5 (0%) |
-| 4. Delete Task | ❌ Not Started | 0/4 (0%) |
+| 2. List Tasks | ✅ Complete | 6/6 (100%) |
+| 3. Update Task | ✅ Complete | 5/5 (100%) |
+| 4. Delete Task | ✅ Complete | 4/4 (100%) |
 | 5. Workspace Mgmt | ⚠️ Partial | 2/5 (40%) |
-| 6. User Mapping | ❌ Not Started | 0/7 (0%) |
+| 6. User Mapping | ⚠️ Partial | 2/7 (29%) |
 | 7. Cross-Cutting | ⚠️ Mostly Done | 4/5 (80%) |
 | 8. Documentation | ⚠️ Partial | 2/5 (40%) |
-| **TOTAL** | **In Progress** | **~19/48 (40%)** |
+| **TOTAL** | **In Progress** | **~37/48 (77%)** |
 
 ---
 
@@ -475,10 +475,7 @@
 
 To complete the MVP, implement features in this order:
 
-1. **Feature 2: List & Filter Tasks** (6 tasks) - High Priority
-2. **Feature 3: Update Task** (5 tasks) - High Priority
-3. **Feature 4: Delete Task** (4 tasks) - High Priority
-4. **Feature 6: User Mapping** (7 tasks) - Medium Priority
-5. **Complete Workspace Management** (3 remaining tasks) - Medium Priority
-6. **Add Metrics** (1 task from Cross-Cutting) - Low Priority
-7. **Finalize Documentation** (3 remaining tasks) - Before Production
+1. **Feature 6: User Mapping** (5 remaining tasks) - High Priority
+2. **Complete Workspace Management** (3 remaining tasks) - High Priority
+3. **Add Metrics** (1 task from Cross-Cutting) - Medium Priority
+4. **Finalize Documentation** (3 remaining tasks) - Before Production

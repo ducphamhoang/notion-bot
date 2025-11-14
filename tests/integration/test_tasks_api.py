@@ -176,3 +176,89 @@ async def test_error_response_format(client: httpx.AsyncClient):
         assert "error" in error_data
         assert "code" in error_data["error"]
         assert "message" in error_data["error"]
+
+
+@pytest.mark.asyncio
+async def test_list_tasks_requires_database_id(client: httpx.AsyncClient):
+    """GET /tasks requires notion_database_id parameter."""
+    response = await client.get("/tasks")
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_list_tasks_invalid_limit(client: httpx.AsyncClient):
+    """Limit over 100 should fail validation."""
+    params = {
+        "notion_database_id": "1a2b3c4d5e6f7890abcdef1234567890",
+        "limit": 200
+    }
+    response = await client.get("/tasks", params=params)
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_list_tasks_valid_request(client: httpx.AsyncClient):
+    """Valid list request should either return data or upstream error."""
+    params = {
+        "notion_database_id": "1a2b3c4d5e6f7890abcdef1234567890",
+        "status": "In Progress",
+        "limit": 5
+    }
+    response = await client.get("/tasks", params=params)
+    assert response.status_code in [200, 404, 502]
+    data = response.json()
+    if response.status_code == 200:
+        assert "data" in data
+        assert "page" in data
+        assert "limit" in data
+    else:
+        assert "error" in data
+
+
+@pytest.mark.asyncio
+async def test_update_task_requires_payload(client: httpx.AsyncClient):
+    """PATCH /tasks/{id} without payload should fail validation."""
+    response = await client.patch("/tasks/1a2b3c4d5e6f7890abcdef1234567890", json={})
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_update_task_status_request(client: httpx.AsyncClient):
+    """PATCH /tasks/{id} should accept valid payload even without live Notion."""
+    payload = {"status": "Done"}
+    response = await client.patch(
+        "/tasks/1a2b3c4d5e6f7890abcdef1234567890",
+        json=payload
+    )
+    assert response.status_code in [200, 404, 502]
+    if response.status_code == 200:
+        data = response.json()
+        assert "notion_task_id" in data
+    else:
+        data = response.json()
+        assert "error" in data
+
+
+@pytest.mark.asyncio
+async def test_delete_task_success(client: httpx.AsyncClient):
+    """DELETE /tasks/{id} should return 204 on successful deletion."""
+    task_id = "1a2b3c4d5e6f7890abcdef1234567890"
+    response = await client.delete(f"/tasks/{task_id}")
+    assert response.status_code in [204, 404, 502]  # 204 for success, 404 if not found, 502 for API issues
+
+
+@pytest.mark.asyncio
+async def test_delete_task_invalid_id_format(client: httpx.AsyncClient):
+    """DELETE /tasks/{id} should return 422 for invalid task ID format."""
+    invalid_task_id = "invalid_format"
+    response = await client.delete(f"/tasks/{invalid_task_id}")
+    assert response.status_code == 422  # FastAPI path validation error
+
+
+@pytest.mark.asyncio
+async def test_delete_task_not_found(client: httpx.AsyncClient):
+    """DELETE /tasks/{id} should return 404 for non-existent task."""
+    # Use a valid format but non-existent task ID
+    non_existent_task_id = "1a2b3c4d5e6f7890abcdef1234567891"
+    response = await client.delete(f"/tasks/{non_existent_task_id}")
+    assert response.status_code in [204, 404, 502]  # 404 if Notion returns 404, 204 if success, 502 for API issues

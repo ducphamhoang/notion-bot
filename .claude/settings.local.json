@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(openspec list:*)",
+      "Bash(openspec validate:*)",
+      "Bash(openspec show:*)",
+      "Bash(if [ -d \"/mnt/d/Duc/WebProjects/notion-bot/src\" ])",
+      "Bash(then find /mnt/d/Duc/WebProjects/notion-bot/src -type f -name \"*.py\" -o -name \"*.ts\" -o -name \"*.js\")",
+      "Bash(else echo \"No src directory found\")",
+      "Bash(fi)",
+      "Bash(tree:*)",
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(python3:*)",
+      "Bash(timeout 5 python3:*)",
+      "Bash(pytest:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -2,12 +2,13 @@
 
 import pytest
 from datetime import datetime
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, patch
 from notion_client import APIResponseError
-from notion_client.errors import HTTPResponseError
 
 from src.features.tasks.dto.create_task_request import CreateTaskRequest
 from src.features.tasks.dto.create_task_response import CreateTaskResponse
+from src.features.tasks.dto.list_tasks_request import ListTasksRequest
+from src.features.tasks.dto.update_task_request import UpdateTaskRequest
 from src.features.tasks.services.notion_task_service import NotionTaskService
 from src.core.errors.exceptions import NotionAPIError, NotFoundError, ValidationError
 
@@ -26,6 +27,30 @@ class MockAPIResponseError(APIResponseError):
 def create_mock_api_error(status: int, message: str, code: str, **kwargs):
     """Create a mock APIResponseError with required attributes."""
     return MockAPIResponseError(status, message, code, **kwargs)
+
+
+def build_notion_page(
+    *,
+    title: str = "Test Task",
+    status: str = "In Progress",
+    priority: str = "High",
+    due_date: datetime | None = None,
+) -> dict:
+    """Helper to construct a Notion page payload for testing."""
+    due_value = due_date or datetime.utcnow()
+    return {
+        "id": "task-id-123",
+        "url": "https://notion.so/task-id-123",
+        "created_time": datetime.utcnow().isoformat() + "Z",
+        "last_edited_time": datetime.utcnow().isoformat() + "Z",
+        "properties": {
+            "Name": {"title": [{"plain_text": title}]},
+            "Status": {"status": {"name": status}},
+            "Priority": {"select": {"name": priority}},
+            "Due Date": {"date": {"start": due_value.isoformat() + "Z"}},
+            "Assignee": {"people": [{"name": "Jane Doe", "id": "user_123"}]}
+        }
+    }
 
 
 class TestNotionTaskService:
@@ -227,3 +252,184 @@ class TestNotionTaskService:
 
             assert exc_info.value.entity_type == "database"
             assert exc_info.value.entity_id == database_id
+
+    @pytest.mark.asyncio
+    async def test_list_tasks_success_returns_summary(self):
+        """List tasks returns TaskSummary objects."""
+        request = ListTasksRequest(
+            notion_database_id="1a2b3c4d5e6f7890abcdef1234567890",
+            status="In Progress",
+            limit=2
+        )
+
+        mock_client = AsyncMock()
+        mock_client.databases.query.return_value = {
+            "results": [build_notion_page()],
+            "has_more": False,
+            "next_cursor": None
+        }
+
+        service = NotionTaskService(notion_client=mock_client)
+        response = await service.list_tasks(request)
+
+        assert response.total == 1
+        assert response.data[0].status == "In Progress"
+        assert response.data[0].priority == "High"
+        mock_client.databases.query.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_list_tasks_pagination_second_page(self):
+        """List tasks fetches additional pages when needed."""
+        request = ListTasksRequest(
+            notion_database_id="1a2b3c4d5e6f7890abcdef1234567890",
+            page=2,
+            limit=1
+        )
+
+        first_page = build_notion_page(title="First")
+        second_page = build_notion_page(title="Second", status="Done")
+
+        mock_client = AsyncMock()
+        mock_client.databases.query.side_effect = [
+            {
+                "results": [first_page],
+                "has_more": True,
+                "next_cursor": "cursor-1"
+            },
+            {
+                "results": [second_page],
+                "has_more": False,
+                "next_cursor": None
+            }
+        ]
+
+        service = NotionTaskService(notion_client=mock_client)
+        response = await service.list_tasks(request)
+
+        assert len(response.data) == 1
+        assert response.data[0].title == "Second"
+        assert response.has_more is False
+        assert mock_client.databases.query.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_list_tasks_handles_not_found(self):
+        """List tasks propagates Notion 404 as domain error."""
+        request = ListTasksRequest(
+            notion_database_id="1a2b3c4d5e6f7890abcdef1234567890"
+        )
+
+        mock_client = AsyncMock()
+        mock_client.databases.query.side_effect = create_mock_api_error(
+            status=404,
+            message="Database not found",
+            code="object_not_found"
+        )
+
+        service = NotionTaskService(notion_client=mock_client)
+
+        with pytest.raises(NotFoundError):
+            await service.list_tasks(request)
+
+    @pytest.mark.asyncio
+    async def test_update_task_success(self):
+        """Update task returns response with updated fields."""
+        request = UpdateTaskRequest(status="Done")
+        mock_client = AsyncMock()
+        mock_client.pages.update.return_value = build_notion_page(status="Done")
+
+        service = NotionTaskService(notion_client=mock_client)
+        response = await service.update_task("task-id", request)
+
+        assert response.status == "Done"
+        assert response.notion_task_id == "task-id-123"
+        mock_client.pages.update.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_update_task_not_found(self):
+        """Update task maps Notion 404 to NotFoundError."""
+        request = UpdateTaskRequest(status="Done")
+        mock_client = AsyncMock()
+        mock_client.pages.update.side_effect = create_mock_api_error(
+            status=404,
+            message="Page not found",
+            code="object_not_found"
+        )
+
+        service = NotionTaskService(notion_client=mock_client)
+
+        with pytest.raises(NotFoundError):
+            await service.update_task("missing", request)
+
+    @pytest.mark.asyncio
+    async def test_update_task_validation_error(self):
+        """Update task surfaces validation issues from Notion."""
+        request = UpdateTaskRequest(status="Done")
+        mock_client = AsyncMock()
+        mock_client.pages.update.side_effect = create_mock_api_error(
+            status=400,
+            message="Invalid status",
+            code="validation_error"
+        )
+
+        service = NotionTaskService(notion_client=mock_client)
+
+        with pytest.raises(ValidationError):
+            await service.update_task("task-id", request)
+
+    @pytest.mark.asyncio
+    async def test_delete_task_success(self):
+        """Delete task archives the page in Notion."""
+        mock_client = AsyncMock()
+        mock_client.pages.update.return_value = build_notion_page()
+
+        service = NotionTaskService(notion_client=mock_client)
+        await service.delete_task("task-id-123")
+
+        mock_client.pages.update.assert_awaited_once_with(
+            page_id="task-id-123", archived=True
+        )
+
+    @pytest.mark.asyncio
+    async def test_delete_task_not_found(self):
+        """Delete task maps Notion 404 to NotFoundError."""
+        mock_client = AsyncMock()
+        mock_client.pages.update.side_effect = create_mock_api_error(
+            status=404,
+            message="Page not found",
+            code="object_not_found"
+        )
+
+        service = NotionTaskService(notion_client=mock_client)
+
+        with pytest.raises(NotFoundError):
+            await service.delete_task("missing")
+
+    @pytest.mark.asyncio
+    async def test_delete_task_validation_error(self):
+        """Delete task surfaces validation issues from Notion."""
+        mock_client = AsyncMock()
+        mock_client.pages.update.side_effect = create_mock_api_error(
+            status=400,
+            message="Invalid page ID",
+            code="validation_error"
+        )
+
+        service = NotionTaskService(notion_client=mock_client)
+
+        with pytest.raises(ValidationError):
+            await service.delete_task("invalid-id")
+
+    @pytest.mark.asyncio
+    async def test_delete_task_notion_api_error(self):
+        """Delete task maps other Notion errors to NotionAPIError."""
+        mock_client = AsyncMock()
+        mock_client.pages.update.side_effect = create_mock_api_error(
+            status=500,
+            message="Internal server error",
+            code="internal_server_error"
+        )
+
+        service = NotionTaskService(notion_client=mock_client)
+
+        with pytest.raises(NotionAPIError):
+            await service.delete_task("task-id-123")
