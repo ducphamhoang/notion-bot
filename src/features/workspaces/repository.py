@@ -48,7 +48,23 @@ class WorkspaceRepository:
     
     async def create(self, workspace_data: WorkspaceCreate) -> Workspace:
         """Create a new workspace mapping."""
+        from datetime import datetime
+        
         workspace_dict = workspace_data.dict()
+        
+        # Set default property_mappings if None
+        if workspace_dict.get("property_mappings") is None:
+            workspace_dict["property_mappings"] = {
+                "title": "Name",
+                "due_date": "Due Date",
+                "priority": "Priority",
+                "assignee": "Assignee",
+                "status": "Status"
+            }
+        
+        # Add timestamps
+        workspace_dict["created_at"] = datetime.utcnow()
+        workspace_dict["updated_at"] = datetime.utcnow()
         
         try:
             # Check for duplicate first
@@ -75,9 +91,9 @@ class WorkspaceRepository:
                 
         except ConflictError:
             raise
-        except Exception:
-            logger.error(f"Database error creating workspace {workspace_dict}")
-            raise InternalError("Failed to create workspace")
+        except Exception as e:
+            logger.error(f"Database error creating workspace {workspace_dict}: {type(e).__name__}: {e}")
+            raise InternalError(f"Failed to create workspace: {str(e)}")
     
     async def get_by_id(self, workspace_id: str) -> Optional[Workspace]:
         """Get workspace by MongoDB _id."""

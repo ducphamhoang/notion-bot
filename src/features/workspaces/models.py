@@ -61,8 +61,8 @@ class Workspace(BaseModel):
     platform_id: str = Field(description="Channel or workspace ID on platform")
     notion_database_id: str = Field(description="Target Notion database UUID")
     name: str = Field(description="Human-readable workspace name")
-    property_mappings: dict = Field(
-        default_factory=lambda: {
+    property_mappings: Optional[dict] = Field(
+        default={
             "title": "Name",
             "due_date": "Due Date",
             "priority": "Priority",

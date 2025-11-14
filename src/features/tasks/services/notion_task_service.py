@@ -16,6 +16,7 @@ from src.core.errors.exceptions import (
 )
 from src.core.notion.client import get_notion_client
 from src.core.notion.rate_limiter import with_retry
+from src.core.notion.database_resolver import get_database_resolver
 from src.features.tasks.dto.create_task_request import CreateTaskRequest
 from src.features.tasks.dto.create_task_response import CreateTaskResponse
 from src.features.tasks.dto.list_tasks_request import ListTasksRequest
@@ -55,6 +56,66 @@ class NotionTaskService:
         if self._notion_client is None:
             self._notion_client = await get_notion_client()
         return self._notion_client
+
+    async def _resolve_data_source_id(self, database_id: str) -> str:
+        """
+        Get the data_source_id from a database_id.
+
+        In API version 2025-09-03, databases contain one or more data sources.
+        We need the data_source_id for queries and page creation.
+
+        Args:
+            database_id: The database ID (UUID format)
+
+        Returns:
+            The data_source_id to use for operations
+
+        Raises:
+            ValidationError: If database has no data sources
+            NotFoundError: If database not found
+            NotionAPIError: If API call fails
+        """
+        try:
+            client = await self._get_client()
+
+            # Retrieve database info to get data sources
+            db_info = await client.databases.retrieve(database_id=database_id)
+
+            # Get data sources array
+            data_sources = db_info.get("data_sources", [])
+
+            if not data_sources:
+                raise ValidationError(
+                    f"Database {database_id} has no data sources. "
+                    "This may indicate the database is not properly configured."
+                )
+
+            # Use the first data source (most common case for single-source databases)
+            # In the future, we could support selecting specific data sources
+            data_source_id = data_sources[0]["id"]
+            data_source_name = data_sources[0].get("name", "Untitled")
+
+            logger.info(
+                f"Resolved database {database_id} to data source {data_source_id} "
+                f"(name: {data_source_name})"
+            )
+
+            return data_source_id
+
+        except APIResponseError as e:
+            if e.status == 404:
+                raise NotFoundError("database", database_id)
+            elif e.status == 400:
+                raise ValidationError(
+                    f"Invalid database ID format: {database_id}",
+                    details=e.body if isinstance(e.body, dict) else {"error": str(e.body)}
+                )
+            else:
+                raise NotionAPIError(
+                    f"Failed to resolve data source for database {database_id}: {str(e)}",
+                    api_error=e.body if isinstance(e.body, dict) else {"error": str(e.body)},
+                    status_code=e.status
+                )
     
     @with_retry(
         max_retries=4,
@@ -79,8 +140,13 @@ class NotionTaskService:
             InternalError: For unexpected errors
         """
         try:
-            # Get client
+            # Get client and resolver
             client = await self._get_client()
+            resolver = get_database_resolver()
+
+            # API 2025-09-03: Resolve database_id to data_source_id
+            data_source_id = await self._resolve_data_source_id(request.notion_database_id)
+            logger.info(f"Using data source {data_source_id} for database {request.notion_database_id}")
 
             # Resolve assignee_id via user mapping service if provided
             resolved_assignee_id = None
@@ -98,12 +164,16 @@ class NotionTaskService:
                         platform_user_id=request.assignee_id
                     )
 
-            # Build Notion properties with resolved assignee ID
-            properties = self._build_notion_properties(request, None, resolved_assignee_id)
+            # Get the actual title property name from the database schema
+            title_property = await resolver.get_title_property_name(request.notion_database_id)
+            logger.debug(f"Using title property '{title_property}' for database {request.notion_database_id}")
 
-            # Create the page in Notion
+            # Build Notion properties with resolved assignee ID and title property
+            properties = self._build_notion_properties(request, None, resolved_assignee_id, title_property)
+
+            # API 2025-09-03: Create the page using data_source_id instead of database_id
             notion_page = await client.pages.create(
-                parent={"database_id": request.notion_database_id},
+                parent={"data_source_id": data_source_id},
                 properties=properties
             )
 
@@ -119,14 +189,16 @@ class NotionTaskService:
             if e.status == 404:
                 raise NotFoundError("database", request.notion_database_id)
             elif e.status == 400:
+                error_msg = e.body.get('message', 'Bad request') if isinstance(e.body, dict) else str(e.body)
+                error_field = e.body.get('field') if isinstance(e.body, dict) else None
                 raise ValidationError(
-                    f"Invalid task data: {e.body.get('message', 'Bad request')}",
-                    field=e.body.get('field')
+                    f"Invalid task data: {error_msg}",
+                    field=error_field
                 )
             else:
                 raise NotionAPIError(
                     f"Failed to create task: {str(e)}",
-                    api_error=e.body,
+                    api_error=e.body if isinstance(e.body, dict) else {"error": str(e.body)},
                     status_code=e.status
                 )
         
@@ -139,6 +211,7 @@ class NotionTaskService:
         request: CreateTaskRequest,
         property_mappings: Optional[Dict[str, str]] = None,
         resolved_assignee_id: Optional[str] = None,
+        title_property_name: Optional[str] = None,
     ) -> dict:
         """
         Build Notion page properties from request.
@@ -147,15 +220,19 @@ class NotionTaskService:
             request: Task creation request
             property_mappings: Optional custom property name mappings
             resolved_assignee_id: Resolved Notion user ID for assignee (if any)
+            title_property_name: The actual name of the title property in the database
 
         Returns:
             Dictionary of Notion properties
         """
         resolved_mappings = self._resolve_property_mappings(property_mappings)
+        
+        # Use the provided title property name or fall back to resolved mapping
+        title_prop = title_property_name or resolved_mappings["title"]
 
         # Base properties
         properties = {
-            resolved_mappings["title"]: {
+            title_prop: {
                 "title": [
                     {"text": {"content": request.title}}
                 ]
@@ -215,6 +292,10 @@ class NotionTaskService:
             client = await self._get_client()
             resolved_mappings = self._resolve_property_mappings(property_mappings)
 
+            # API 2025-09-03: Resolve database_id to data_source_id
+            data_source_id = await self._resolve_data_source_id(request.notion_database_id)
+            logger.debug(f"Querying data source {data_source_id}")
+
             notion_filter = self._build_list_filters(request, resolved_mappings)
             sorts = self._build_sort_params(request, resolved_mappings)
 
@@ -226,7 +307,6 @@ class NotionTaskService:
 
             while True:
                 query_payload: dict[str, Any] = {
-                    "database_id": request.notion_database_id,
                     "page_size": min(page_size, 100),
                 }
                 if notion_filter:
@@ -236,7 +316,11 @@ class NotionTaskService:
                 if cursor:
                     query_payload["start_cursor"] = cursor
 
-                response = await client.databases.query(**query_payload)
+                # API 2025-09-03: Use data_sources.query() instead of databases.query()
+                response = await client.data_sources.query(
+                    data_source_id=data_source_id,
+                    **query_payload
+                )
                 results = response.get("results", [])
                 response_has_more = response.get("has_more", False)
                 cursor = response.get("next_cursor")
