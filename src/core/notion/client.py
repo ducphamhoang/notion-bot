@@ -33,13 +33,24 @@ async def test_notion_connection() -> dict:
     """Test Notion API connectivity."""
     try:
         client = await get_notion_client()
-        # Test connection by making a simple search (no filter needed)
-        result = await client.search(page_size=1)
+        from src.config.settings import get_settings
+        settings = get_settings()
+
+        # API 2025-09-03: Use data_source filter for search
+        if settings.notion_api_version >= "2025-09-03":
+            result = await client.search(
+                filter={"property": "object", "value": "data_source"},
+                page_size=1
+            )
+        else:
+            # Older API versions: use database filter or no filter
+            result = await client.search(page_size=1)
+
         return {
             "status": "healthy",
             "notion_api": {
                 "status": "connected",
-                "api_version": "connected"
+                "api_version": settings.notion_api_version
             }
         }
     except Exception as e:

@@ -53,8 +53,10 @@ class Settings(BaseSettings):
     )
     
     class Config:
-        env_file = ".env"
+        # env_file = ".env"  # Commented out - using environment variables from docker-compose
         case_sensitive = False
+        # Allow extra fields from environment that aren't defined in the model
+        extra = "ignore"
     
     @validator("log_level")
     def validate_log_level(cls, v: str) -> str:

@@ -17,8 +17,8 @@ class ListTasksRequest(BaseModel):
     notion_database_id: str = Field(
         ...,
         min_length=32,
-        max_length=32,
-        description="Target Notion database ID (32-character UUID without dashes)"
+        max_length=36,
+        description="Target Notion database ID (UUID with or without dashes)"
     )
     status: Optional[str] = Field(
         default=None,
@@ -66,9 +66,11 @@ class ListTasksRequest(BaseModel):
 
     @validator("notion_database_id")
     def validate_database_id(cls, value: str) -> str:
-        """Ensure Notion database ID is 32 lowercase hex characters."""
-        if not re.fullmatch(r"[a-f0-9]{32}", value):
-            raise ValueError("Invalid notion_database_id format")
+        """Ensure Notion database ID is valid UUID format (with or without dashes)."""
+        # Accept both formats: with dashes (36 chars) or without dashes (32 chars)
+        if not re.fullmatch(r"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}", value):
+            if not re.fullmatch(r"[a-f0-9]{32}", value):
+                raise ValueError("Invalid notion_database_id format (must be UUID with or without dashes)")
         return value
 
     @validator("priority")

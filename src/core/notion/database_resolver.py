@@ -82,28 +82,105 @@ class DatabaseResolver:
     async def get_database_schema(self, database_id: str) -> Dict[str, Any]:
         """
         Get the schema (properties) for a database.
-        
+
+        In API 2025-09-03, database.retrieve() may return empty properties.
+        If this happens, we infer the schema by querying sample pages.
+
         Args:
             database_id: The database ID
-            
+
         Returns:
             Dictionary of property name -> property info
         """
+        # Check cache first
+        if database_id in self._cache and 'properties' in self._cache[database_id]:
+            return self._cache[database_id]['properties']
+
         # Resolve to source database first
         source_id = await self.resolve_database_id(database_id)
-        
+
         try:
             client = await get_notion_client()
-            db_info = await client.databases.retrieve(database_id=source_id)
-            
-            if 'properties' in db_info:
-                return db_info['properties']
+            db_info = await client.databases.retrieve(database_id=database_id)
+
+            properties = db_info.get('properties', {})
+
+            # API 2025-09-03: If database has no properties, infer from sample pages
+            if not properties:
+                logger.info(f"Database {database_id} has no properties at database level. Inferring from pages...")
+                properties = await self._infer_schema_from_pages(source_id, database_id)
+
+            # Cache the properties
+            if database_id in self._cache:
+                self._cache[database_id]['properties'] = properties
             else:
-                logger.warning(f"Database {source_id} has no properties schema")
-                return {}
-                
+                self._cache[database_id] = {'properties': properties}
+
+            return properties
+
         except Exception as e:
-            logger.error(f"Error getting schema for database {source_id}: {e}")
+            logger.error(f"Error getting schema for database {database_id}: {e}")
+            return {}
+
+    async def _infer_schema_from_pages(self, data_source_id: str, database_id: str) -> Dict[str, Any]:
+        """
+        Infer database schema by querying sample pages.
+
+        In API 2025-09-03, database-level properties may be empty,
+        but pages still have properties with type information.
+
+        Args:
+            data_source_id: The data source ID to query
+            database_id: The original database ID (for logging)
+
+        Returns:
+            Dictionary of property name -> property info inferred from pages
+        """
+        try:
+            client = await get_notion_client()
+
+            # Query a few pages to infer schema
+            query_result = await client.data_sources.query(
+                data_source_id=data_source_id,
+                page_size=5
+            )
+
+            pages = query_result.get("results", [])
+
+            if not pages:
+                logger.warning(f"No pages found in data source {data_source_id} to infer schema")
+                return {}
+
+            # Extract properties from first page
+            first_page = pages[0]
+            page_properties = first_page.get("properties", {})
+
+            if not page_properties:
+                logger.warning(f"First page in data source {data_source_id} has no properties")
+                return {}
+
+            # Build schema dictionary from page properties
+            schema = {}
+            for prop_name, prop_value in page_properties.items():
+                prop_type = prop_value.get("type")
+                prop_id = prop_value.get("id")
+
+                schema[prop_name] = {
+                    "id": prop_id,
+                    "type": prop_type,
+                    # Note: We don't have full schema details like select options,
+                    # but we have enough to identify property names and types
+                }
+
+            logger.info(
+                f"Inferred {len(schema)} properties from pages in data source {data_source_id}: "
+                f"{list(schema.keys())}"
+            )
+
+            return schema
+
+        except Exception as e:
+            logger.error(f"Error inferring schema from pages for data source {data_source_id}: {e}")
             return {}
     
     async def get_title_property_name(self, database_id: str) -> str:

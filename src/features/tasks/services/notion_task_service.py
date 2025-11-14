@@ -421,7 +421,9 @@ class NotionTaskService:
         property_mappings: Dict[str, str],
     ) -> List[dict[str, Any]]:
         """Map request sorting into Notion sorts payload."""
-        direction = request.order
+        # Convert "asc"/"desc" to Notion's "ascending"/"descending"
+        direction = "ascending" if request.order == "asc" else "descending"
+
         if request.sort_by in {"created_time", "last_edited_time"}:
             return [{"timestamp": request.sort_by, "direction": direction}]
 

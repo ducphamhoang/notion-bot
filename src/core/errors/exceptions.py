@@ -47,11 +47,19 @@ class ConflictError(DomainException):
 
 class NotionAPIError(DomainException):
     """Raised when Notion API calls fail."""
-    
-    def __init__(self, message: str, api_error: dict | None = None, status_code: int | None = None):
+
+    def __init__(self, message: str, api_error: dict | str | None = None, status_code: int | None = None):
         if api_error is None:
             api_error = {}
-        details = api_error.copy()
+
+        # Handle both dict and string error bodies
+        if isinstance(api_error, dict):
+            details = api_error.copy()
+        elif isinstance(api_error, str):
+            details = {"error": api_error}
+        else:
+            details = {}
+
         if status_code:
             details["status_code"] = status_code
         super().__init__(message, details)
