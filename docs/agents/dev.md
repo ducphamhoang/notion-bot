@@ -390,15 +390,125 @@ class CreateTaskResponse(BaseModel):
 
 ## 5. Best Practices cụ thể
 
-### a. Dependency Injection
-- Sử dụng FastAPI Depends() hoặc NestJS dependency injection
-- Services không được khởi tạo dependencies trong constructor một cách hard-coded
-- Dễ dàng mock dependencies trong tests
+### a. Dependency Injection (DI) - CRITICAL PATTERN ⭐
 
-### b. Error Handling
-- Service layer throw domain exceptions (`NotFoundError`, `ValidationError`, `NotionAPIError`)
-- Global error handler middleware map exceptions → HTTP status codes
-- Client nhận standardized error response format
+**MỌI SERVICE PHẢI TUÂN THỦ PATTERN NÀY:**
+
+```python
+from typing import Optional
+
+class WorkspaceService:
+    def __init__(self, repository: Optional[WorkspaceRepository] = None):
+        """
+        Service với optional repository injection cho testability.
+        
+        Args:
+            repository: Optional repository để inject trong tests.
+                       Mặc định sẽ dùng production repository nếu không được cung cấp.
+        """
+        self._repository = repository or WorkspaceRepository()
+        
+    async def create_workspace(self, request: CreateWorkspaceRequest):
+        # Business logic sử dụng self._repository
+        result = await self._repository.create(...)
+        return result
+```
+
+**Lý do bắt buộc:**
+1. ✅ **Dễ test**: Inject mock repository trong tests
+2. ✅ **Không cần monkey-patching**: Sử dụng FastAPI dependency override
+3. ✅ **Backward compatible**: Code cũ vẫn hoạt động bình thường
+4. ✅ **SOLID principles**: Dependency inversion
+5. ✅ **FastAPI native**: Tận dụng hệ thống DI có sẵn
+
+**Testing với DI:**
+
+```python
+# tests/conftest.py
+@pytest.fixture
+def mock_workspace_service(app: FastAPI):
+    """Override service với mock repository."""
+    mock_repo = Mock(spec=WorkspaceRepository)
+    mock_repo._workspaces = {}  # Stateful mock
+    
+    def mock_create(workspace_data):
+        workspace = Workspace(**workspace_data)
+        mock_repo._workspaces[workspace.platform_id] = workspace
+        return workspace
+    
+    def mock_find(platform_id):
+        return mock_repo._workspaces.get(platform_id, None)
+    
+    mock_repo.create.side_effect = mock_create
+    mock_repo.find_by_platform_id.side_effect = mock_find
+    
+    def override_service():
+        return WorkspaceService(repository=mock_repo)
+    
+    # Sử dụng FastAPI dependency override
+    app.dependency_overrides[get_workspace_service] = override_service
+    yield mock_repo
+    app.dependency_overrides.clear()  # Cleanup
+```
+
+**QUY TẮC:**
+- ❌ KHÔNG được khởi tạo dependencies hard-coded
+- ❌ KHÔNG được monkey-patch (`unittest.mock.patch`) trong integration tests
+- ✅ PHẢI accept optional repository parameter
+- ✅ PHẢI có default factory pattern: `repository or Repository()`
+
+### b. Error Handling - CRITICAL PATTERN ⭐
+
+**NGUYÊN TẮC QUAN TRỌNG:**
+- Service layer **CHỈ** throw domain exceptions
+- Routes layer **KHÔNG ĐƯỢC** catch và convert sang HTTPException
+- Global handler tự động convert domain exceptions → HTTP responses
+
+**ĐÚNG ✅:**
+
+```python
+# Service layer
+class WorkspaceService:
+    async def get_by_platform_id(self, platform: str, platform_id: str):
+        workspace = await self._repository.find_by_platform_id(platform_id)
+        if not workspace:
+            # Chỉ raise domain exception
+            raise NotFoundError(
+                entity_type="Workspace",
+                entity_id=f"{platform}:{platform_id}"
+            )
+        return workspace
+
+# Routes layer - KHÔNG catch exception
+@router.get("/query")
+async def get_workspace(
+    platform: str,
+    platform_id: str,
+    service: WorkspaceService = Depends()
+):
+    # Để exception bubble up
+    return await service.get_by_platform_id(platform, platform_id)
+
+# main.py - Global handler
+@app.exception_handler(DomainException)
+async def domain_exception_handler(request: Request, exc: DomainException):
+    return handle_domain_exception(exc)  # Converts to proper HTTP response
+```
+
+**SAI ❌:**
+
+```python
+# KHÔNG BAO GIỜ LÀM NHƯ NÀY
+@router.get("/query")
+async def get_workspace(platform: str, platform_id: str, service = Depends()):
+    try:
+        return await service.get_by_platform_id(platform, platform_id)
+    except Exception as e:
+        # ❌ SAI - Không được catch và convert
+        raise HTTPException(status_code=404, detail=str(e))
+```
+
+**Domain Exceptions:**
 
 ```python
 # core/errors/exceptions.py
@@ -407,13 +517,23 @@ class DomainException(Exception):
     pass
 
 class NotFoundError(DomainException):
-    """Entity not found"""
+    """Entity not found - Maps to 404"""
+    pass
+
+class ValidationError(DomainException):
+    """Validation failed - Maps to 400"""
     pass
 
 class NotionAPIError(DomainException):
-    """Notion API failed"""
+    """Notion API failed - Maps to 502/503"""
     pass
 ```
+
+**QUY TẮC:**
+- ❌ KHÔNG catch exceptions trong routes để convert sang HTTPException
+- ✅ PHẢI để domain exceptions bubble up
+- ✅ PHẢI register global exception handler trong main.py
+- ✅ PHẢI sử dụng domain exceptions thay vì HTTPException
 
 ### c. Testing Strategy
 

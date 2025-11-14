@@ -14,7 +14,7 @@ Core task management APIs for Notion integration.
 
 ## Architecture
 
-This project follows a feature-first clean architecture approach:
+This project follows a feature-first clean architecture approach with **Dependency Injection**:
 
 ```
 src/
@@ -22,9 +22,41 @@ src/
 ├── config/         # Configuration and environment management
 ├── features/       # Business features (tasks, workspaces, users)
 │   ├── tasks/      # Task management feature
-│   └── workspaces/ # Workspace mapping feature
+│   ├── workspaces/ # Workspace mapping feature
+│   └── users/      # User mapping feature
 └── adapters/       # Platform adapters (Teams, Slack, etc.)
 ```
+
+### Key Architecture Principles
+
+1. **Dependency Injection (DI)**: Services accept optional repository parameters for easy testing
+2. **Clean Architecture**: Business logic independent of frameworks and databases
+3. **Feature-First**: Code organized by business features, not technical layers
+4. **Domain-Driven**: Custom exceptions and domain models for clear error handling
+
+### Dependency Injection Pattern
+
+All services follow this pattern for testability:
+
+```python
+class WorkspaceService:
+    def __init__(self, repository: Optional[WorkspaceRepository] = None):
+        """
+        Service with optional repository injection.
+        
+        Args:
+            repository: Optional repository for testing. 
+                       Defaults to production repository if not provided.
+        """
+        self._repository = repository or WorkspaceRepository()
+```
+
+**Benefits**:
+- ✅ Easy to test with mock repositories
+- ✅ No monkey-patching required in tests
+- ✅ Backward compatible (existing code works unchanged)
+- ✅ Follows SOLID principles
+- ✅ Uses FastAPI's native dependency override system
 
 ## Setup
 
