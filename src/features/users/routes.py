@@ -32,11 +32,7 @@ async def create_user_mapping(
     This allows mapping platform users (e.g., Slack, Teams) to their corresponding Notion users 
     for proper assignee resolution when creating or updating tasks.
     """
-    try:
-        return await service.create_mapping(request)
-    except Exception as e:
-        # Re-raise with more context if needed, or handle specific exceptions
-        raise HTTPException(status_code=400, detail=str(e))
+    return await service.create_mapping(request)
 
 
 @router.get("/", response_model=ListUserMappingsResponse)
@@ -67,10 +63,7 @@ async def get_user_mapping_by_id(
     """
     Get a user mapping by its database ID.
     """
-    try:
-        return await service.get_mapping_by_id(mapping_id)
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    return await service.get_mapping_by_id(mapping_id)
 
 
 @router.get("/resolve", response_model=UserMappingResponse)
@@ -86,8 +79,5 @@ async def resolve_user_mapping(
     - platform: Platform identifier (e.g., 'slack', 'teams')
     - platform_user_id: User ID in the platform
     """
-    try:
-        # Get the full mapping details
-        return await service.get_mapping_by_platform_and_user_id(platform, platform_user_id)
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    # Get the full mapping details
+    return await service.get_mapping_by_platform_and_user_id(platform, platform_user_id)

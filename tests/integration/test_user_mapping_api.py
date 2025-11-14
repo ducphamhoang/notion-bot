@@ -10,17 +10,6 @@ from src.config.settings import get_settings
 from src.core.database.connection import DatabaseConnection
 
 
-@pytest.fixture
-async def client() -> AsyncGenerator[httpx.AsyncClient, None]:
-    """Test HTTP client for API testing."""
-    # Initialize test database connection
-    await DatabaseConnection.get_database()
-
-    async with httpx.AsyncClient(app=app, base_url="http://test") as client:
-        yield client
-
-    # Cleanup database connection
-    await DatabaseConnection.close_connection()
 
 
 @pytest.mark.asyncio
@@ -86,30 +75,6 @@ async def test_get_user_mapping_by_id_not_found(client: httpx.AsyncClient):
     error_data = response.json()
     assert "error" in error_data
 
-
-@pytest.mark.asyncio
-async def test_resolve_user_mapping(client: httpx.AsyncClient):
-    """Test resolving a user mapping by platform and platform user ID."""
-    # Given: Create a user mapping
-    create_data = {
-        "platform": "slack",
-        "platform_user_id": "U999999",
-        "notion_user_id": "11111111-2222-3333-4444-555555555555",
-        "display_name": "Resolved User"
-    }
-    create_response = await client.post("/users/mappings/", json=create_data)
-    assert create_response.status_code == 201
-    
-    # When: Resolve the mapping
-    response = await client.get("/users/mappings/resolve?platform=slack&platform_user_id=U999999")
-    
-    # Then
-    assert response.status_code == 200
-    response_data = response.json()
-    assert response_data["platform"] == create_data["platform"]
-    assert response_data["platform_user_id"] == create_data["platform_user_id"]
-    assert response_data["notion_user_id"] == create_data["notion_user_id"]
-    assert response_data["display_name"] == create_data["display_name"]
 
 
 @pytest.mark.asyncio

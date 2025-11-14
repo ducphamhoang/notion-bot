@@ -12,9 +12,16 @@ from src.core.notion.client import get_notion_client
 class WorkspaceService:
     """Service for managing workspace mappings between platforms and Notion databases."""
 
-    def __init__(self, repository: WorkspaceRepository):
-        """Initialize the service with a repository."""
-        self._repository = repository
+    def __init__(self, repository: Optional[WorkspaceRepository] = None):
+        """
+        Initialize the service with a repository.
+        
+        Args:
+            repository: Optional WorkspaceRepository instance. If None, creates a new instance.
+                       This allows for dependency injection in tests while maintaining
+                       backward compatibility.
+        """
+        self._repository = repository if repository is not None else WorkspaceRepository()
 
     async def create_workspace(self, request: CreateWorkspaceRequest) -> WorkspaceResponse:
         """Create a new workspace mapping."""

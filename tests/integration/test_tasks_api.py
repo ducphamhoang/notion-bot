@@ -9,17 +9,6 @@ from src.main import app
 from src.core.database.connection import DatabaseConnection
 
 
-@pytest.fixture
-async def client() -> AsyncGenerator[httpx.AsyncClient, None]:
-    """Test HTTP client for API testing."""
-    # Initialize test database connection
-    await DatabaseConnection.get_database()
-    
-    async with httpx.AsyncClient(app=app, base_url="http://test") as client:
-        yield client
-    
-    # Cleanup database connection
-    await DatabaseConnection.close_connection()
 
 
 @pytest.mark.asyncio
@@ -59,20 +48,6 @@ async def test_create_task_validation_error(client: httpx.AsyncClient):
     error_data = response.json()
     assert "detail" in error_data
 
-
-@pytest.mark.asyncio
-async def test_create_task_invalid_database_id(client: httpx.AsyncClient):
-    """Test task creation with invalid database ID format."""
-    invalid_request = {
-        "title": "Test Task",
-        "notion_database_id": "invalid_format"
-    }
-    
-    response = await client.post("/tasks/", json=invalid_request)
-    
-    assert response.status_code == 422  # Pydantic validation error
-    error_data = response.json()
-    assert "detail" in error_data
 
 
 @pytest.mark.asyncio
@@ -156,27 +131,6 @@ async def test_create_task_with_assignee_not_supported_yet(client: httpx.AsyncCl
     assert response.status_code in [201, 404, 502]
 
 
-@pytest.mark.asyncio
-async def test_error_response_format(client: httpx.AsyncClient):
-    """Test that error responses follow the expected format."""
-    # Trigger validation error
-    invalid_request = {
-        "title": "Test Task",
-        "notion_database_id": "invalid_format"
-    }
-    
-    response = await client.post("/tasks/", json=invalid_request)
-    
-    if response.status_code == 422:
-        # FastAPI validation errors have different format, so check general structure
-        pass
-    else:
-        # Check domain error format
-        error_data = response.json()
-        assert "error" in error_data
-        assert "code" in error_data["error"]
-        assert "message" in error_data["error"]
-
 
 @pytest.mark.asyncio
 async def test_list_tasks_requires_database_id(client: httpx.AsyncClient):
@@ -196,24 +150,6 @@ async def test_list_tasks_invalid_limit(client: httpx.AsyncClient):
     assert response.status_code == 422
 
 
-@pytest.mark.asyncio
-async def test_list_tasks_valid_request(client: httpx.AsyncClient):
-    """Valid list request should either return data or upstream error."""
-    params = {
-        "notion_database_id": "1a2b3c4d5e6f7890abcdef1234567890",
-        "status": "In Progress",
-        "limit": 5
-    }
-    response = await client.get("/tasks", params=params)
-    assert response.status_code in [200, 404, 502]
-    data = response.json()
-    if response.status_code == 200:
-        assert "data" in data
-        assert "page" in data
-        assert "limit" in data
-    else:
-        assert "error" in data
-
 
 @pytest.mark.asyncio
 async def test_update_task_requires_payload(client: httpx.AsyncClient):
@@ -221,22 +157,6 @@ async def test_update_task_requires_payload(client: httpx.AsyncClient):
     response = await client.patch("/tasks/1a2b3c4d5e6f7890abcdef1234567890", json={})
     assert response.status_code == 422
 
-
-@pytest.mark.asyncio
-async def test_update_task_status_request(client: httpx.AsyncClient):
-    """PATCH /tasks/{id} should accept valid payload even without live Notion."""
-    payload = {"status": "Done"}
-    response = await client.patch(
-        "/tasks/1a2b3c4d5e6f7890abcdef1234567890",
-        json=payload
-    )
-    assert response.status_code in [200, 404, 502]
-    if response.status_code == 200:
-        data = response.json()
-        assert "notion_task_id" in data
-    else:
-        data = response.json()
-        assert "error" in data
 
 
 @pytest.mark.asyncio

@@ -13,7 +13,8 @@ import structlog
 # Import application components
 from src.config.settings import get_settings
 from src.core.database.connection import DatabaseConnection
-from src.core.errors.error_handler import global_exception_handler
+from src.core.errors.error_handler import global_exception_handler, handle_domain_exception
+from src.core.errors.exceptions import DomainException
 from src.core.monitoring.metrics import get_metrics_collector, get_health_cache
 from src.core.notion.client import test_notion_connection
 from src.features.tasks.routes import router as tasks_router
@@ -182,10 +183,16 @@ def create_app() -> FastAPI:
     app.include_router(workspaces_router)
     app.include_router(users_router)
     
-    # Global exception handler
+    # Domain exception handler (for our custom exceptions)
+    @app.exception_handler(DomainException)
+    async def domain_exception_handler_wrapper(request: Request, exc: DomainException):
+        """Handle domain exceptions (NotFoundError, ValidationError, etc.)."""
+        return handle_domain_exception(exc)
+    
+    # Global exception handler (for unexpected exceptions)
     @app.exception_handler(Exception)
     async def global_exception_handler_wrapper(request: Request, exc: Exception):
-        """Wrap the global exception handler."""
+        """Handle unexpected exceptions."""
         return await global_exception_handler(request, exc)
     
     # Health check endpoint

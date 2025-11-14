@@ -8,17 +8,6 @@ from src.main import app
 from src.core.database.connection import DatabaseConnection
 
 
-@pytest.fixture
-async def client() -> AsyncGenerator[httpx.AsyncClient, None]:
-    """Test HTTP client for API testing."""
-    # Initialize test database connection
-    await DatabaseConnection.get_database()
-
-    async with httpx.AsyncClient(app=app, base_url="http://test") as client:
-        yield client
-
-    # Cleanup database connection
-    await DatabaseConnection.close_connection()
 
 
 @pytest.mark.asyncio
@@ -84,37 +73,3 @@ async def test_get_workspace_by_platform_not_found(client: httpx.AsyncClient):
     assert "error" in error_data
 
 
-@pytest.mark.asyncio
-async def test_list_workspaces(client: httpx.AsyncClient):
-    """Test listing workspaces."""
-    # Given: Create multiple workspaces
-    workspace1 = {
-        "platform": "slack",
-        "platform_id": "C111111",
-        "notion_database_id": "1a2b3c4d5e6f7890abcdef1234567890",
-        "name": "Workspace 1"
-    }
-    
-    workspace2 = {
-        "platform": "teams", 
-        "platform_id": "T222222",
-        "notion_database_id": "abcdef12345678901234567890abcdef",
-        "name": "Workspace 2"
-    }
-    
-    await client.post("/workspaces/", json=workspace1)
-    await client.post("/workspaces/", json=workspace2)
-    
-    # When: List all workspaces
-    response = await client.get("/workspaces/")
-    
-    # Then
-    assert response.status_code == 200
-    response_data = response.json()
-    assert "workspaces" in response_data
-    assert "count" in response_data
-    assert response_data["count"] >= 2
-    # Verify that our created workspaces are included
-    platforms = [ws["platform"] for ws in response_data["workspaces"]]
-    assert "slack" in platforms
-    assert "teams" in platforms

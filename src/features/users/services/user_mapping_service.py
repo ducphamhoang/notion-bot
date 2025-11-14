@@ -12,9 +12,16 @@ from src.core.errors.exceptions import NotFoundError
 class UserMappingService:
     """Service for user mapping operations."""
 
-    def __init__(self, repository: UserMappingRepository):
-        """Initialize the service with a repository."""
-        self._repository = repository
+    def __init__(self, repository: Optional[UserMappingRepository] = None):
+        """
+        Initialize the service with a repository.
+        
+        Args:
+            repository: Optional UserMappingRepository instance. If None, creates a new instance.
+                       This allows for dependency injection in tests while maintaining
+                       backward compatibility.
+        """
+        self._repository = repository if repository is not None else UserMappingRepository()
 
     async def create_mapping(self, request: CreateUserMappingRequest) -> UserMappingResponse:
         """Create a new user mapping."""
