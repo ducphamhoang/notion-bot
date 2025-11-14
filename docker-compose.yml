@@ -38,7 +38,7 @@ services:
 
       # Notion API (set these in .env or here)
       NOTION_API_KEY: ${NOTION_API_KEY:-secret_your_notion_integration_token}
-      NOTION_API_VERSION: 2022-10-28
+      NOTION_API_VERSION: "2022-10-28"
 
       # API Configuration
       API_HOST: 0.0.0.0

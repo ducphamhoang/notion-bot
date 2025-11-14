@@ -38,7 +38,7 @@ src/
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/ducphamhoang/notion-bot
 cd notion-bot
 ```
 
@@ -194,12 +194,115 @@ Notion API has strict rate limits (3 requests/second). This API handles them aut
 - Random jitter (±20%) to prevent synchronized retries  
 - Graceful error responses when limits are exceeded
 
-## Production Deployment
+## Deployment
 
-### MongoDB Setup
+### Automated Deployment (Recommended)
 
-- **Development**: Docker Compose (as shown)
-- **Production**: MongoDB Atlas recommended
+The easiest way to deploy the application is using the automated deployment scripts:
+
+**Linux/macOS:**
+```bash
+# 1. Make the script executable
+chmod +x deploy.sh
+
+# 2. Configure environment
+cp .env.example .env
+# Edit .env with your Notion API credentials
+
+# 3. Deploy in development mode
+./deploy.sh
+
+# For production deployment
+./deploy.sh -e prod
+```
+
+**Windows:**
+```powershell
+# 1. Configure environment
+Copy-Item .env.example .env
+# Edit .env with your Notion API credentials
+
+# 2. Deploy in development mode
+.\deploy.ps1
+
+# For production deployment
+.\deploy.ps1 -e prod
+```
+
+For more information about the deployment scripts, see [DEPLOYMENT_SCRIPTS.md](DEPLOYMENT_SCRIPTS.md).
+
+### Development Deployment (Manual)
+
+If you prefer to deploy manually:
+
+```bash
+# 1. Configure environment
+cp .env.example .env
+# Edit .env with your Notion API credentials
+
+# 2. Start MongoDB and the application
+docker-compose up -d
+
+# 3. Verify application is running
+curl http://localhost:8000/health
+```
+
+**Alternative: Running without Docker Compose**
+
+If Docker Compose fails due to validation errors or other issues:
+
+```bash
+# Start MongoDB with Docker
+docker run -d --name notion-bot-mongodb -p 27017:27017 \
+  -e MONGO_INITDB_ROOT_USERNAME=admin \
+  -e MONGO_INITDB_ROOT_PASSWORD=password123 \
+  -e MONGO_INITDB_DATABASE=notion-bot \
+  mongo:7.0
+
+# Install dependencies directly
+pip install -r requirements.txt
+
+# Run the application (set PYTHONPATH to allow module imports)
+PYTHONPATH=. python -c "
+import uvicorn
+from src.main import app
+from src.config.settings import get_settings
+
+settings = get_settings()
+print(f'Starting server on {settings.api_host}:{settings.api_port}')
+uvicorn.run(app, host=settings.api_host, port=settings.api_port, reload=settings.debug, log_level='info')
+"
+```
+
+### Production Deployment
+
+#### Using Docker Compose
+
+```bash
+# For production deployment, use the production compose file
+docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+```
+
+#### Using MongoDB Atlas (Recommended for Production)
+
+1. Update your environment file:
+```bash
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/notion-bot?retryWrites=true&w=majority
+```
+
+2. Deploy without MongoDB service:
+```bash
+# This will only start the app service, connecting to your Atlas instance
+docker-compose -f docker-compose.prod.yml up -d app
+```
+
+### Common Deployment Issues & Solutions
+
+1. **Docker Compose validation error**: If you see an error like `services.app.environment.NOTION_API_VERSION invalid jsonType time.Time`, use the automated deployment script or the manual Docker approach above.
+
+2. **Module import errors**: If you see `ModuleNotFoundError: No module named 'src'`, run the application with the `PYTHONPATH=.` prefix.
+
+3. **Application won't start**: Check that the `NOTION_API_KEY` in your `.env` file is valid and has appropriate permissions in Notion.
 
 ### Environment Security
 
@@ -213,6 +316,10 @@ Notion API has strict rate limits (3 requests/second). This API handles them aut
 - Async/await throughout the stack
 - Timeout configurations for external APIs
 - Health checks with cached results
+
+For more detailed deployment instructions including troubleshooting and common issues, see [DEPLOYMENT_QUICKSTART.md](DEPLOYMENT_QUICKSTART.md).
+
+For deployment best practices and verification, use the [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md).
 
 ## Contributing
 

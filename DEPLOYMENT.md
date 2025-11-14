@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Complete guide for deploying Notion Bot API to various environments.
+Complete guide for deploying Notion Bot API to various environments with solutions to common challenges.
 
 ---
 
@@ -12,7 +12,7 @@ Complete guide for deploying Notion Bot API to various environments.
 4. [Production Deployment](#production-deployment)
 5. [Environment Configuration](#environment-configuration)
 6. [Health Checks & Monitoring](#health-checks--monitoring)
-7. [Troubleshooting](#troubleshooting)
+7. [Troubleshooting & Common Issues](#troubleshooting--common-issues)
 8. [Backup & Recovery](#backup--recovery)
 
 ---
@@ -34,29 +34,53 @@ Complete guide for deploying Notion Bot API to various environments.
 
 ## Local Development
 
-### Quick Start
+### Quick Start (Recommended)
 
 ```bash
 # 1. Clone and setup
 git clone <repository-url>
 cd notion-bot
 
-# 2. Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Configure environment
+# 2. Configure environment
 cp .env.example .env
 # Edit .env and set NOTION_API_KEY
 
-# 5. Start MongoDB
-docker-compose up -d mongodb
+# 3. Build and start
+docker-compose up -d --build
 
-# 6. Run application
-python -m uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+# 4. Check status
+docker-compose ps
+docker-compose logs -f app
+
+# 5. Verify health
+curl http://localhost:8000/health
+```
+
+### Alternative: Running without Docker Compose
+
+If you encounter Docker Compose issues (like the `NOTION_API_VERSION invalid jsonType time.Time` error):
+
+```bash
+# 1. Start MongoDB with Docker
+docker run -d --name notion-bot-mongodb -p 27017:27017 \
+  -e MONGO_INITDB_ROOT_USERNAME=admin \
+  -e MONGO_INITDB_ROOT_PASSWORD=password123 \
+  -e MONGO_INITDB_DATABASE=notion-bot \
+  mongo:7.0
+
+# 2. Install dependencies directly
+pip install -r requirements.txt
+
+# 3. Run the application (set PYTHONPATH to allow module imports)
+PYTHONPATH=. python -c "
+import uvicorn
+from src.main import app
+from src.config.settings import get_settings
+
+settings = get_settings()
+print(f'Starting server on {settings.api_host}:{settings.api_port}')
+uvicorn.run(app, host=settings.api_host, port=settings.api_port, reload=settings.debug, log_level='info')
+"
 ```
 
 ### Access Points
@@ -70,14 +94,6 @@ python -m uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ## Docker Deployment
 
 ### Development Mode
-
-Use the automated deployment script:
-
-```bash
-./deploy.sh
-```
-
-Or manually:
 
 ```bash
 # 1. Configure environment
@@ -213,7 +229,7 @@ server {
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `NOTION_API_VERSION` | `2022-10-28` | Notion API version |
+| `NOTION_API_VERSION` | `2022-10-28` | Notion API version (quoted as string) |
 | `API_HOST` | `0.0.0.0` | API bind address |
 | `API_PORT` | `8000` | API port |
 | `DEBUG` | `false` | Debug mode |
@@ -249,14 +265,15 @@ Response:
 ```json
 {
   "status": "healthy",
-  "version": "1.0.0",
-  "dependencies": {
-    "mongodb": {
-      "status": "connected",
-      "latency_ms": 5
-    },
-    "notion_api": {
-      "status": "connected"
+  "checks": {
+    "database": {
+      "status": "healthy",
+      "mongodb": {
+        "status": "connected",
+        "ping": {
+          "ok": 1.0
+        }
+      }
     }
   }
 }
@@ -300,11 +317,27 @@ docker-compose logs -f -t app
 
 ---
 
-## Troubleshooting
+## Troubleshooting & Common Issues
 
-### Common Issues
+### 1. Docker Compose Validation Error
 
-#### 1. Container won't start
+**Issue:** `services.app.environment.NOTION_API_VERSION invalid jsonType time.Time`
+
+**Solution:** The `NOTION_API_VERSION` should be quoted to ensure it's treated as a string in the docker-compose.yml file. This has been fixed in the repository:
+```yaml
+NOTION_API_VERSION: "2022-10-28"  # Now properly quoted
+```
+
+### 2. Module Import Errors
+
+**Issue:** `ModuleNotFoundError: No module named 'src'`
+
+**Solution:** Set the `PYTHONPATH` environment variable when running the application:
+```bash
+PYTHONPATH=. python src/main.py
+```
+
+### 3. Container won't start
 
 ```bash
 # Check logs
@@ -316,7 +349,7 @@ docker-compose logs app
 # - Port 8000 already in use
 ```
 
-#### 2. MongoDB connection failed
+### 4. MongoDB connection failed
 
 ```bash
 # Check MongoDB is running
@@ -331,7 +364,7 @@ docker exec -it notion-bot-mongodb mongosh --eval "db.adminCommand('ping')"
 # Verify credentials in .env match docker-compose.yml
 ```
 
-#### 3. Notion API errors
+### 5. Notion API errors
 
 ```bash
 # Verify API key is valid
@@ -343,7 +376,7 @@ curl -H "Authorization: Bearer $NOTION_API_KEY" \
 # The integration must be added as a connection to your database in Notion
 ```
 
-#### 4. CORS errors
+### 6. CORS errors
 
 ```bash
 # Update CORS_ORIGINS in .env
@@ -353,7 +386,7 @@ CORS_ORIGINS=https://yourfrontend.com,https://www.yourfrontend.com
 docker-compose restart app
 ```
 
-#### 5. Rate limit exceeded
+### 7. Rate limit exceeded
 
 The API handles Notion rate limits automatically with exponential backoff.
 
@@ -517,6 +550,13 @@ For issues and questions:
 - Review [API Documentation](http://localhost:8000/docs)
 - Check application logs
 
+## Additional Resources
+
+- [DEPLOYMENT_QUICKSTART.md](DEPLOYMENT_QUICKSTART.md) - Quick start guide with solutions to common issues
+- [DEPLOYMENT_SCRIPTS.md](DEPLOYMENT_SCRIPTS.md) - Documentation for automated deployment scripts
+- [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) - Pre-flight checklist for deployments
+- [README.md](README.md) - Main project documentation
+
 ---
 
-**Last Updated:** 2025-01-14
+**Last Updated:** 2025-11-14
