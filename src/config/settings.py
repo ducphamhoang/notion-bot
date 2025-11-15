@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     )
     
     class Config:
-        # env_file = ".env"  # Commented out - using environment variables from docker-compose
+        env_file = ".env"  # Read from .env file
         case_sensitive = False
         # Allow extra fields from environment that aren't defined in the model
         extra = "ignore"

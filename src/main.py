@@ -20,6 +20,7 @@ from src.core.errors.exceptions import DomainException
 from src.core.monitoring.metrics import get_metrics_collector, get_health_cache
 from src.core.notion.client import test_notion_connection
 from src.features.tasks.routes import router as tasks_router
+from src.features.tokens.routes import router as tokens_router
 from src.features.workspaces.routes import router as workspaces_router
 from src.features.users.routes import router as users_router
 
@@ -182,6 +183,7 @@ def create_app() -> FastAPI:
     
     # Include routers
     app.include_router(tasks_router)
+    app.include_router(tokens_router)
     app.include_router(workspaces_router)
     app.include_router(users_router)
     

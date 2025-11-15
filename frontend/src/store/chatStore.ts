@@ -17,9 +17,11 @@ interface ChatState {
   messages: Message[];
   isLoading: boolean;
   databaseId: string | null;
+  selectedTokenId: string | null;
   
   // Actions
   setDatabaseId: (id: string) => void;
+  setSelectedTokenId: (id: string | null) => void;
   addMessage: (message: Omit<Message, 'id'>) => void;
   sendCommand: (text: string) => Promise<void>;
   clearMessages: () => void;
@@ -30,10 +32,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
   isLoading: false,
   databaseId: null,
+  selectedTokenId: localStorage.getItem('selectedTokenId') || null,
 
   // Set Notion database ID
   setDatabaseId: (id: string) => {
     set({ databaseId: id });
+  },
+
+  // Set selected token ID with localStorage persistence
+  setSelectedTokenId: (id: string | null) => {
+    if (id) {
+      localStorage.setItem('selectedTokenId', id);
+    } else {
+      localStorage.removeItem('selectedTokenId');
+    }
+    set({ selectedTokenId: id });
   },
 
   // Add a message to the chat
@@ -49,7 +62,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   // Send a command and handle the response
   sendCommand: async (text: string) => {
-    const { addMessage, databaseId } = get();
+    const { addMessage, databaseId, selectedTokenId } = get();
 
     // Add user message
     addMessage({
@@ -107,6 +120,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       // Convert to API request
       const apiRequest = commandToApiRequest(parsed, databaseId);
+
+      // Add token_id to request if selected
+      if (selectedTokenId) {
+        if (apiRequest.method === 'GET') {
+          // For GET requests, add to params object
+          apiRequest.params = {
+            ...apiRequest.params,
+            token_id: selectedTokenId,
+          };
+        } else {
+          // For POST/PATCH/DELETE, append to endpoint URL
+          const separator = apiRequest.endpoint.includes('?') ? '&' : '?';
+          apiRequest.endpoint = `${apiRequest.endpoint}${separator}token_id=${selectedTokenId}`;
+        }
+      }
 
       // Execute API call
       let response: CommandResponse | null = null;

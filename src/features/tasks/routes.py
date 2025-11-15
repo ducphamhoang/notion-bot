@@ -1,10 +1,11 @@
 """API routes for task management."""
 
 import logging
-from typing import Annotated
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Body, Depends, Path, status
+from fastapi import APIRouter, Body, Depends, Path, Query, status
 
+from src.core.notion.client_factory import NotionClientFactory
 from src.features.tasks.dto.create_task_request import CreateTaskRequest
 from src.features.tasks.dto.create_task_response import CreateTaskResponse
 from src.features.tasks.dto.list_tasks_request import ListTasksRequest
@@ -18,8 +19,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-async def get_task_service() -> NotionTaskService:
-    """Dependency injection for task service."""
+async def get_task_service(
+    token_id: Optional[str] = Query(None, description="Notion API token ID to use for this request")
+) -> NotionTaskService:
+    """Dependency injection for task service with optional token selection."""
+    if token_id:
+        # Create client with specific token
+        notion_client = await NotionClientFactory.create_client(token_id)
+        return NotionTaskService(notion_client=notion_client)
+    # No token specified - use default singleton (env var)
     return NotionTaskService()
 
 
