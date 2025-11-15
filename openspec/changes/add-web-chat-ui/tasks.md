@@ -23,16 +23,16 @@
 - [ ] 1.9 Create `frontend/.env` with `VITE_API_BASE_URL=http://localhost:8000`
 
 ## 2. Core UI Components
-- [ ] 2.1 Create `src/components/ChatContainer.tsx` - Main layout with header and message area
-- [ ] 2.2 Create `src/components/MessageList.tsx` - Scrollable message history with auto-scroll to bottom
-- [ ] 2.3 Create `src/components/Message.tsx` - Individual message bubble (user vs bot styling, timestamp)
-- [ ] 2.4 Create `src/components/CommandInput.tsx` - Input field with slash command trigger
-- [ ] 2.5 Create `src/components/LoadingIndicator.tsx` - Spinner for API call states
-- [ ] 2.6 Create `src/components/TaskCard.tsx` - Formatted display for task data responses
+- [ ] 2.1 Create `frontend/src/components/ChatContainer.tsx` - Main layout with header and message area
+- [ ] 2.2 Create `frontend/src/components/MessageList.tsx` - Scrollable message history with auto-scroll to bottom
+- [ ] 2.3 Create `frontend/src/components/Message.tsx` - Individual message bubble (user vs bot styling, timestamp)
+- [ ] 2.4 Create `frontend/src/components/CommandInput.tsx` - Input field with slash command trigger
+- [ ] 2.5 Create `frontend/src/components/LoadingIndicator.tsx` - Spinner for API call states
+- [ ] 2.6 Create `frontend/src/components/TaskCard.tsx` - Formatted display for task data responses
 - [ ] 2.7 Style all components with Tailwind for minimal, clean appearance
 
 ## 3. Slash Command Autocomplete ⭐
-- [ ] 3.1 Create `src/lib/commands.ts` with command registry:
+- [ ] 3.1 Create `frontend/src/lib/commands.ts` with command registry:
   ```ts
   export const COMMANDS = [
     {
@@ -61,7 +61,7 @@
     }
   ]
   ```
-- [ ] 3.2 Create `src/components/CommandPalette.tsx` using shadcn Command component
+- [ ] 3.2 Create `frontend/src/components/CommandPalette.tsx` using shadcn Command component
 - [ ] 3.3 Implement trigger: Show dropdown when user types "/" at start of input
 - [ ] 3.4 Filter commands as user types (e.g., "/task c" shows only "create")
 - [ ] 3.5 Keyboard navigation: Arrow keys (↑↓) + Enter to select, Escape to close
@@ -69,7 +69,7 @@
 - [ ] 3.7 Show parameter hints after command selection (e.g., "title:... priority:...")
 
 ## 4. Command Parser Implementation
-- [ ] 4.1 Create `src/lib/commandParser.ts` - Parse text like `/task create title:"Fix bug" priority:High`
+- [ ] 4.1 Create `frontend/src/lib/commandParser.ts` - Parse text like `/task create title:"Fix bug" priority:High`
 - [ ] 4.2 Implement key-value parser handling quoted strings: `parseParams(text: string): Record<string, string>`
 - [ ] 4.3 Handle edge cases: escaped quotes, special characters, spaces in values
 - [ ] 4.4 Create command-to-endpoint mapper:
@@ -78,10 +78,10 @@
   - `/task update {id}` → `PATCH /tasks/{id}` with UpdateTaskRequest body
   - `/task delete {id}` → `DELETE /tasks/{id}`
 - [ ] 4.5 Validate required parameters per command (show inline errors)
-- [ ] 4.6 Create `src/lib/apiMapper.ts` to convert parsed params to API request format
+- [ ] 4.6 Create `frontend/src/lib/apiMapper.ts` to convert parsed params to API request format
 
 ## 5. TypeScript Types (Matching Backend DTOs)
-- [ ] 5.1 Create `src/types/task.ts` with interfaces matching `src/features/tasks/dto/`:
+- [ ] 5.1 Create `frontend/src/types/task.ts` with interfaces matching backend `src/features/tasks/dto/`:
   ```ts
   // Matches CreateTaskRequest from src/features/tasks/dto/create_task_request.py
   export interface CreateTaskRequest {
@@ -134,12 +134,12 @@
     updated_at: string;
   }
   ```
-- [ ] 5.2 Create `src/types/api.ts` for common API types (error responses, pagination)
-- [ ] 5.3 Create `src/types/message.ts` for chat message types
+- [ ] 5.2 Create `frontend/src/types/api.ts` for common API types (error responses, pagination)
+- [ ] 5.3 Create `frontend/src/types/message.ts` for chat message types
 
 ## 6. API Integration (Aligned with Existing Backend)
-- [ ] 6.1 Create `src/api/client.ts` - Axios/fetch wrapper with base URL and auth headers
-- [ ] 6.2 Create `src/api/taskApi.ts` with functions calling existing endpoints:
+- [ ] 6.1 Create `frontend/src/api/client.ts` - Axios/fetch wrapper with base URL and auth headers
+- [ ] 6.2 Create `frontend/src/api/taskApi.ts` with functions calling existing backend endpoints:
   - `createTask(data: CreateTaskRequest): Promise<CreateTaskResponse>`
   - `listTasks(params: ListTasksRequest): Promise<ListTasksResponse>`
   - `updateTask(taskId: string, data: UpdateTaskRequest): Promise<UpdateTaskResponse>`
@@ -154,7 +154,7 @@
 - [ ] 6.7 Create error response parser to extract user-friendly messages
 
 ## 7. State Management
-- [ ] 7.1 Create `src/store/chatStore.ts` using Zustand or React Context:
+- [ ] 7.1 Create `frontend/src/store/chatStore.ts` using Zustand or React Context:
   - Message history: `messages: Array<{id, role, content, timestamp, error?}>`
   - Loading state: `isLoading: boolean`
   - Auth state: `apiKey: string | null`
@@ -195,7 +195,7 @@
 - [ ] 9.6 Add PWA meta tags for "Add to Home Screen" functionality (optional)
 
 ## 10. Authentication Setup
-- [ ] 10.1 Create `src/components/AuthModal.tsx` - Prompt for API key on first load
+- [ ] 10.1 Create `frontend/src/components/AuthModal.tsx` - Prompt for API key on first load
 - [ ] 10.2 Validate API key format (non-empty string, starts with "secret_" for Notion)
 - [ ] 10.3 Store API key in sessionStorage: `sessionStorage.setItem('apiKey', key)`
 - [ ] 10.4 Add "Logout" button to clear API key and reset chat
