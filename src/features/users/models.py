@@ -17,11 +17,16 @@ class PyObjectId(ObjectId):
     ) -> core_schema.CoreSchema:
         return core_schema.no_info_after_validator_function(
             cls.validate,
-            core_schema.str_schema(),
+            core_schema.union_schema([
+                core_schema.is_instance_schema(ObjectId),
+                core_schema.str_schema(),
+            ]),
         )
 
     @classmethod
     def validate(cls, v: Any) -> ObjectId:
+        if v is None:
+            return ObjectId()
         if isinstance(v, str) and ObjectId.is_valid(v):
             return ObjectId(v)
         elif isinstance(v, ObjectId):

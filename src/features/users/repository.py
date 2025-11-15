@@ -38,16 +38,22 @@ class UserMappingRepository:
     async def create_mapping(self, mapping: UserMapping) -> UserMappingInDB:
         """Create a new user mapping."""
         collection = await self.get_collection()
-        
+
         mapping.updated_at = datetime.utcnow()
         if not mapping.created_at:
             mapping.created_at = datetime.utcnow()
-        
-        result = await collection.insert_one(mapping.dict(by_alias=True))
-        
-        # Return the created mapping with the generated ID
-        mapping.id = result.inserted_id
-        return UserMappingInDB(**mapping.dict(by_alias=True))
+
+        # Prepare document for insertion, exclude the id field
+        doc = mapping.dict(by_alias=True, exclude={"id"})
+        # Remove _id if it exists and is None
+        doc.pop("_id", None)
+
+        result = await collection.insert_one(doc)
+
+        # Retrieve the created document with the generated ID
+        created_doc = await collection.find_one({"_id": result.inserted_id})
+
+        return UserMappingInDB(**created_doc)
 
     async def find_by_platform_and_user_id(
         self, 
