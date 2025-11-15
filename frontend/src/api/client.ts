@@ -120,7 +120,7 @@ class ApiClient {
     code: string,
     message: string,
     status: number,
-    details?: Record<string, any>
+    details?: Record<string, unknown>
   ): ApiError {
     return {
       code,
@@ -172,7 +172,7 @@ class ApiClient {
     return this.handleResponse<T>(response);
   }
 
-  async post<T>(endpoint: string, body: any): Promise<T> {
+  async post<T>(endpoint: string, body: unknown): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
 
     const response = await this.fetchWithTimeout(url, {
@@ -184,7 +184,7 @@ class ApiClient {
     return this.handleResponse<T>(response);
   }
 
-  async patch<T>(endpoint: string, body: any): Promise<T> {
+  async patch<T>(endpoint: string, body: unknown): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
 
     const response = await this.fetchWithTimeout(url, {

@@ -1,40 +1,52 @@
+import { useCallback, useRef, useState } from 'react';
 import { MessageList } from './MessageList';
 import { CommandInput } from './CommandInput';
-import { Settings } from 'lucide-react';
-import { Button } from './ui/button';
-import { useState } from 'react';
 import { AuthModal } from './AuthModal';
+import { Header } from './Header';
+import { Sidebar } from './Sidebar';
+import { useTheme } from '../hooks/useTheme';
 
 export function ChatContainer() {
   const [showSettings, setShowSettings] = useState(false);
+  const fillCommandRef = useRef<((command: string) => void) | null>(null);
+  const { resolvedTheme } = useTheme();
+
+  const handleRegisterFill = useCallback((fill: ((command: string) => void) | null) => {
+    fillCommandRef.current = fill;
+  }, []);
+
+  const handleQuickAction = (action: 'new-task' | 'view-tasks') => {
+    const fill = fillCommandRef.current;
+    switch (action) {
+      case 'new-task':
+        fill?.('/task create ');
+        break;
+      case 'view-tasks':
+        fill?.('/task list ');
+        break;
+      default:
+        fill?.('');
+    }
+  };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold text-gray-900">Notion Task Bot</h1>
-            <p className="text-xs text-gray-500">Chat interface for managing tasks</p>
+    <div
+      data-theme={resolvedTheme}
+      className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950"
+    >
+      <Header onSettingsClick={() => setShowSettings(true)} />
+
+      <div className="mx-auto max-w-6xl px-4 py-6 lg:px-6">
+        <div className="grid gap-6 lg:grid-cols-sidebar">
+          <Sidebar onQuickAction={handleQuickAction} />
+
+          <div className="flex h-[calc(100vh-140px)] flex-col overflow-hidden rounded-3xl border border-white/50 bg-white/90 shadow-glass backdrop-blur-glass dark:border-slate-800/80 dark:bg-slate-900/80">
+            <MessageList />
+            <CommandInput onRegisterFill={handleRegisterFill} />
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowSettings(true)}
-            title="Settings"
-          >
-            <Settings className="w-5 h-5" />
-          </Button>
         </div>
-      </header>
+      </div>
 
-      {/* Messages */}
-      <MessageList />
-
-      {/* Input */}
-      <CommandInput />
-
-      {/* Settings Modal */}
       {showSettings && <AuthModal onClose={() => setShowSettings(false)} />}
     </div>
   );

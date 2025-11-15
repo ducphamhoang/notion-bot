@@ -1,8 +1,13 @@
 // Chat state management with Zustand
 
 import { create } from 'zustand';
-import type { Message } from '../types/message';
+import type { Message, MessageData } from '../types/message';
 import type { ApiError } from '../types/api';
+import type {
+  CreateTaskResponse,
+  ListTasksResponse,
+  UpdateTaskResponse,
+} from '../types/task';
 import { parseCommand, validateParams } from '../lib/commandParser';
 import { commandToApiRequest } from '../lib/apiMapper';
 import { apiClient } from '../api/client';
@@ -104,28 +109,41 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const apiRequest = commandToApiRequest(parsed, databaseId);
 
       // Execute API call
-      let response: any;
+      let response: CommandResponse | null = null;
       switch (apiRequest.method) {
         case 'GET':
-          response = await apiClient.get(apiRequest.endpoint, apiRequest.params);
+          response = await apiClient.get<ListTasksResponse>(
+            apiRequest.endpoint,
+            apiRequest.params
+          );
           break;
         case 'POST':
-          response = await apiClient.post(apiRequest.endpoint, apiRequest.body);
+          response = await apiClient.post<CreateTaskResponse>(
+            apiRequest.endpoint,
+            apiRequest.body
+          );
           break;
         case 'PATCH':
-          response = await apiClient.patch(apiRequest.endpoint, apiRequest.body);
+          response = await apiClient.patch<UpdateTaskResponse>(
+            apiRequest.endpoint,
+            apiRequest.body
+          );
           break;
         case 'DELETE':
-          response = await apiClient.delete(apiRequest.endpoint);
+          response = await apiClient.delete<Record<string, unknown>>(
+            apiRequest.endpoint
+          );
           break;
       }
 
       // Add success response
+      const messageData = mapResponseToMessageData(response);
+
       addMessage({
         role: 'bot',
         content: formatSuccessResponse(parsed.command, response),
         timestamp: new Date(),
-        data: response,
+        data: messageData,
       });
 
     } catch (error) {
@@ -151,19 +169,53 @@ export const useChatStore = create<ChatState>((set, get) => ({
 /**
  * Format success response based on command type
  */
-function formatSuccessResponse(command: string, data: any): string {
+type CommandResponse =
+  | ListTasksResponse
+  | CreateTaskResponse
+  | UpdateTaskResponse
+  | Record<string, unknown>
+  | null;
+
+function mapResponseToMessageData(response: CommandResponse): MessageData | undefined {
+  if (isListTasksResponse(response)) {
+    return { data: response.data };
+  }
+  return undefined;
+}
+
+function isListTasksResponse(
+  response: CommandResponse
+): response is ListTasksResponse {
+  return Boolean(response && 'data' in response && Array.isArray(response.data));
+}
+
+function formatSuccessResponse(command: string, data: CommandResponse): string {
   switch (command) {
     case 'create':
-      return `✅ Task created successfully!\n\nTask ID: ${data.notion_task_id}\nURL: ${data.notion_task_url}`;
+      if (data && 'notion_task_id' in data && 'notion_task_url' in data) {
+        return `✅ Task created successfully!\n\nTask ID: ${String(
+          data.notion_task_id
+        )}\nURL: ${String(data.notion_task_url)}`;
+      }
+      return '✅ Task created successfully!';
     
     case 'list':
-      if (data.total === 0) {
-        return '📝 No tasks found matching your filters.';
+      if (data && 'total' in data && typeof data.total === 'number') {
+        if (data.total === 0) {
+          return '📝 No tasks found matching your filters.';
+        }
+        const hasMore = 'has_more' in data && Boolean(data.has_more);
+        return `📝 Found ${data.total} task(s)${hasMore ? ' (showing first page)' : ''}`;
       }
-      return `📝 Found ${data.total} task(s)${data.has_more ? ' (showing first page)' : ''}`;
+      return '📝 Command executed successfully!';
     
     case 'update':
-      return `✅ Task updated successfully!\n\nTask ID: ${data.notion_task_id}\nURL: ${data.notion_task_url}`;
+      if (data && 'notion_task_id' in data && 'notion_task_url' in data) {
+        return `✅ Task updated successfully!\n\nTask ID: ${String(
+          data.notion_task_id
+        )}\nURL: ${String(data.notion_task_url)}`;
+      }
+      return '✅ Task updated successfully!';
     
     case 'delete':
       return '✅ Task deleted successfully!';
