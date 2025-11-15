@@ -1,38 +1,42 @@
 # Implementation Tasks - Web Chat UI
 
+**Status:** ✅ **CORE FEATURES COMPLETE - READY FOR TESTING**
+
 **Tech Stack Decision:** React 18 + Vite + TypeScript + Tailwind CSS + shadcn/ui
 
 **Architecture Alignment:** Frontend served via FastAPI StaticFiles, follows existing backend structure in `src/features/`
 
+**Last Updated:** November 15, 2025
+
 ## 0. Architecture Decisions & Planning
 - [x] 0.1 Tech stack: React + Vite + TypeScript + Tailwind + shadcn/ui Command component for slash autocomplete
-- [ ] 0.2 Directory structure: `frontend/` at project root (separate from backend `src/`)
-- [ ] 0.3 Static file serving: FastAPI StaticFiles middleware for production build (`frontend/dist`)
-- [ ] 0.4 API integration: Use existing endpoints from `src/features/tasks/routes.py`
-- [ ] 0.5 Type safety: Generate TypeScript types matching Python Pydantic DTOs
+- [x] 0.2 Directory structure: `frontend/` at project root (separate from backend `src/`)
+- [x] 0.3 Static file serving: FastAPI StaticFiles middleware for production build (`frontend/dist`)
+- [x] 0.4 API integration: Use existing endpoints from `src/features/tasks/routes.py`
+- [x] 0.5 Type safety: Generate TypeScript types matching Python Pydantic DTOs
 
 ## 1. Project Setup
-- [ ] 1.1 Initialize Vite + React + TypeScript project: `npm create vite@latest frontend -- --template react-ts`
-- [ ] 1.2 Install core dependencies: `cd frontend && npm install`
-- [ ] 1.3 Setup Tailwind CSS: `npm install -D tailwindcss postcss autoprefixer && npx tailwindcss init -p`
-- [ ] 1.4 Configure Tailwind in `tailwind.config.js` with content paths
-- [ ] 1.5 Install shadcn/ui CLI and initialize: `npx shadcn-ui@latest init`
-- [ ] 1.6 Add shadcn Command component: `npx shadcn-ui@latest add command`
-- [ ] 1.7 Add additional shadcn components: `npx shadcn-ui@latest add button card input scroll-area`
+- [x] 1.1 Initialize Vite + React + TypeScript project: `npm create vite@latest frontend -- --template react-ts`
+- [x] 1.2 Install core dependencies: `cd frontend && npm install`
+- [x] 1.3 Setup Tailwind CSS: `npm install -D tailwindcss postcss autoprefixer && npx tailwindcss init -p`
+- [x] 1.4 Configure Tailwind in `tailwind.config.js` with content paths
+- [x] 1.5 Install shadcn/ui utilities: `npm install class-variance-authority clsx tailwind-merge lucide-react`
+- [ ] 1.6 Add shadcn Command component: Manually create from shadcn/ui source
+- [ ] 1.7 Add additional shadcn components: Manually create button, card, input, scroll-area
 - [ ] 1.8 Update backend `.env`: Add `http://localhost:5173` to `CORS_ORIGINS` for dev mode
-- [ ] 1.9 Create `frontend/.env` with `VITE_API_BASE_URL=http://localhost:8000`
+- [x] 1.9 Create `frontend/.env` with `VITE_API_BASE_URL=http://localhost:8000`
 
 ## 2. Core UI Components
-- [ ] 2.1 Create `frontend/src/components/ChatContainer.tsx` - Main layout with header and message area
-- [ ] 2.2 Create `frontend/src/components/MessageList.tsx` - Scrollable message history with auto-scroll to bottom
-- [ ] 2.3 Create `frontend/src/components/Message.tsx` - Individual message bubble (user vs bot styling, timestamp)
-- [ ] 2.4 Create `frontend/src/components/CommandInput.tsx` - Input field with slash command trigger
-- [ ] 2.5 Create `frontend/src/components/LoadingIndicator.tsx` - Spinner for API call states
-- [ ] 2.6 Create `frontend/src/components/TaskCard.tsx` - Formatted display for task data responses
-- [ ] 2.7 Style all components with Tailwind for minimal, clean appearance
+- [x] 2.1 Create `frontend/src/components/ChatContainer.tsx` - Main layout with header and message area
+- [x] 2.2 Create `frontend/src/components/MessageList.tsx` - Scrollable message history with auto-scroll to bottom
+- [x] 2.3 Create `frontend/src/components/Message.tsx` - Individual message bubble (user vs bot styling, timestamp)
+- [x] 2.4 Create `frontend/src/components/CommandInput.tsx` - Input field with slash command trigger
+- [x] 2.5 Create `frontend/src/components/LoadingIndicator.tsx` - Integrated in CommandInput with Loader2 icon
+- [x] 2.6 Create `frontend/src/components/TaskCard.tsx` - Formatted display for task data responses
+- [x] 2.7 Style all components with Tailwind for minimal, clean appearance
 
 ## 3. Slash Command Autocomplete ⭐
-- [ ] 3.1 Create `frontend/src/lib/commands.ts` with command registry:
+- [x] 3.1 Create `frontend/src/lib/commands.ts` with command registry:
   ```ts
   export const COMMANDS = [
     {
@@ -69,19 +73,19 @@
 - [ ] 3.7 Show parameter hints after command selection (e.g., "title:... priority:...")
 
 ## 4. Command Parser Implementation
-- [ ] 4.1 Create `frontend/src/lib/commandParser.ts` - Parse text like `/task create title:"Fix bug" priority:High`
-- [ ] 4.2 Implement key-value parser handling quoted strings: `parseParams(text: string): Record<string, string>`
-- [ ] 4.3 Handle edge cases: escaped quotes, special characters, spaces in values
-- [ ] 4.4 Create command-to-endpoint mapper:
+- [x] 4.1 Create `frontend/src/lib/commandParser.ts` - Parse text like `/task create title:"Fix bug" priority:High`
+- [x] 4.2 Implement key-value parser handling quoted strings: `parseParams(text: string): Record<string, string>`
+- [x] 4.3 Handle edge cases: escaped quotes, special characters, spaces in values
+- [x] 4.4 Create command-to-endpoint mapper:
   - `/task create` → `POST /tasks` with CreateTaskRequest body
   - `/task list` → `GET /tasks?status=...&assignee_id=...` with query params
   - `/task update {id}` → `PATCH /tasks/{id}` with UpdateTaskRequest body
   - `/task delete {id}` → `DELETE /tasks/{id}`
-- [ ] 4.5 Validate required parameters per command (show inline errors)
-- [ ] 4.6 Create `frontend/src/lib/apiMapper.ts` to convert parsed params to API request format
+- [x] 4.5 Validate required parameters per command (show inline errors)
+- [x] 4.6 Create `frontend/src/lib/apiMapper.ts` to convert parsed params to API request format
 
 ## 5. TypeScript Types (Matching Backend DTOs)
-- [ ] 5.1 Create `frontend/src/types/task.ts` with interfaces matching backend `src/features/tasks/dto/`:
+- [x] 5.1 Create `frontend/src/types/task.ts` with interfaces matching backend `src/features/tasks/dto/`:
   ```ts
   // Matches CreateTaskRequest from src/features/tasks/dto/create_task_request.py
   export interface CreateTaskRequest {
@@ -134,51 +138,51 @@
     updated_at: string;
   }
   ```
-- [ ] 5.2 Create `frontend/src/types/api.ts` for common API types (error responses, pagination)
-- [ ] 5.3 Create `frontend/src/types/message.ts` for chat message types
+- [x] 5.2 Create `frontend/src/types/api.ts` for common API types (error responses, pagination)
+- [x] 5.3 Create `frontend/src/types/message.ts` for chat message types
 
 ## 6. API Integration (Aligned with Existing Backend)
-- [ ] 6.1 Create `frontend/src/api/client.ts` - Axios/fetch wrapper with base URL and auth headers
-- [ ] 6.2 Create `frontend/src/api/taskApi.ts` with functions calling existing backend endpoints:
+- [x] 6.1 Create `frontend/src/api/client.ts` - Fetch wrapper with base URL and auth headers
+- [x] 6.2 Create `frontend/src/api/taskApi.ts` with functions calling existing backend endpoints:
   - `createTask(data: CreateTaskRequest): Promise<CreateTaskResponse>`
   - `listTasks(params: ListTasksRequest): Promise<ListTasksResponse>`
   - `updateTask(taskId: string, data: UpdateTaskRequest): Promise<UpdateTaskResponse>`
   - `deleteTask(taskId: string): Promise<void>`
-- [ ] 6.3 Implement authentication: Add `X-API-Key` or `Authorization: Bearer <token>` header
-- [ ] 6.4 Handle domain exceptions from backend global handler:
+- [x] 6.3 Implement authentication: Add `X-API-Key` header
+- [x] 6.4 Handle domain exceptions from backend global handler:
   - 404 NotFoundError → "Task not found"
   - 400 ValidationError → Show validation details
   - 502/503 NotionAPIError → "Notion API error, please try again"
-- [ ] 6.5 Add request timeout (30s) with `AbortController`
+- [x] 6.5 Add request timeout (30s) with `AbortController`
 - [ ] 6.6 Add retry logic for network errors (exponential backoff, max 3 retries)
-- [ ] 6.7 Create error response parser to extract user-friendly messages
+- [x] 6.7 Create error response parser to extract user-friendly messages
 
 ## 7. State Management
-- [ ] 7.1 Create `frontend/src/store/chatStore.ts` using Zustand or React Context:
+- [x] 7.1 Create `frontend/src/store/chatStore.ts` using Zustand:
   - Message history: `messages: Array<{id, role, content, timestamp, error?}>`
   - Loading state: `isLoading: boolean`
-  - Auth state: `apiKey: string | null`
-- [ ] 7.2 Implement `addMessage(message)` action with optimistic updates
-- [ ] 7.3 Implement `sendCommand(text)` action orchestrating parser → API call → response
-- [ ] 7.4 Store API key in `sessionStorage` (not localStorage for security)
-- [ ] 7.5 Handle input field state: current value, autocomplete visibility
+  - Database ID state: `databaseId: string | null`
+- [x] 7.2 Implement `addMessage(message)` action with optimistic updates
+- [x] 7.3 Implement `sendCommand(text)` action orchestrating parser → API call → response
+- [x] 7.4 Store API key in `sessionStorage` (not localStorage for security)
+- [x] 7.5 Handle input field state: current value in CommandInput component
 
 ## 8. User Experience Enhancements
-- [ ] 8.1 Auto-focus input field on page load and after sending message
-- [ ] 8.2 Enter to submit command, Shift+Enter for newline (if multi-line supported later)
-- [ ] 8.3 Add relative timestamps: "just now", "2m ago", "1h ago" using `date-fns`
-- [ ] 8.4 Format task list responses as cards with:
+- [x] 8.1 Auto-focus input field on page load and after sending message
+- [x] 8.2 Enter to submit command (multi-line with Shift+Enter not implemented)
+- [x] 8.3 Add relative timestamps: "just now", "2m ago", "1h ago" using `date-fns`
+- [x] 8.4 Format task list responses as cards with:
   - Task title (bold)
   - Status badge (color-coded)
   - Priority indicator
   - Assignee name
   - Due date (if set)
   - Link to Notion page
-- [ ] 8.5 Message type indicators:
+- [x] 8.5 Message type indicators:
   - User message: Right-aligned blue bubble
   - Bot response: Left-aligned gray bubble
-  - Error message: Left-aligned red bubble with icon
-- [ ] 8.6 Show typing indicator ("Bot is thinking...") during API calls
+  - Error message: Left-aligned red bubble with red background
+- [x] 8.6 Show loading indicator ("Processing command...") during API calls
 - [ ] 8.7 Add success animations (checkmark) for successful commands
 - [ ] 8.8 Command history: Press ↑ arrow to recall previous command
 
@@ -195,12 +199,12 @@
 - [ ] 9.6 Add PWA meta tags for "Add to Home Screen" functionality (optional)
 
 ## 10. Authentication Setup
-- [ ] 10.1 Create `frontend/src/components/AuthModal.tsx` - Prompt for API key on first load
-- [ ] 10.2 Validate API key format (non-empty string, starts with "secret_" for Notion)
-- [ ] 10.3 Store API key in sessionStorage: `sessionStorage.setItem('apiKey', key)`
-- [ ] 10.4 Add "Logout" button to clear API key and reset chat
+- [x] 10.1 Create `frontend/src/components/AuthModal.tsx` - Settings modal for API key and database ID
+- [x] 10.2 Validate API key format (non-empty string)
+- [x] 10.3 Store API key in sessionStorage: `sessionStorage.setItem('apiKey', key)`
+- [x] 10.4 Add "Logout" button to clear API key and reset chat
 - [ ] 10.5 Handle 401/403 responses: Show "Invalid API key" error and prompt re-authentication
-- [ ] 10.6 Create `.env.example` in frontend/ with:
+- [x] 10.6 Create `.env.example` in frontend/ with:
   ```
   VITE_API_BASE_URL=http://localhost:8000
   VITE_DEFAULT_DATABASE_ID=your-notion-database-id-here
@@ -208,15 +212,15 @@
 - [ ] 10.7 Document in README: "Get NOTION_API_KEY from backend .env file for testing"
 
 ## 11. Backend Integration (FastAPI Static Files)
-- [ ] 11.1 Add StaticFiles middleware to `src/main.py`:
+- [x] 11.1 Add StaticFiles middleware to `src/main.py`:
   ```python
   from fastapi.staticfiles import StaticFiles
-  import os
+  from pathlib import Path
 
   # Serve frontend build (only if dist/ exists)
-  frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
-  if os.path.exists(frontend_dist):
-      app.mount("/chat", StaticFiles(directory=frontend_dist, html=True), name="chat")
+  frontend_dist_path = Path(__file__).parent.parent / "frontend" / "dist"
+  if frontend_dist_path.exists():
+      app.mount("/chat", StaticFiles(directory=str(frontend_dist_path), html=True), name="chat")
   ```
 - [ ] 11.2 Update `Dockerfile` to install Node.js and build frontend:
   ```dockerfile
@@ -238,8 +242,8 @@
     - ./src:/app/src:ro
     - ./frontend:/app/frontend  # Enable hot-reload for dev
   ```
-- [ ] 11.4 Update `src/config/settings.py` to add `FRONTEND_ENABLED: bool = True`
-- [ ] 11.5 Verify CORS_ORIGINS in `.env` includes both dev (`http://localhost:5173`) and prod URLs
+- [ ] 11.4 Update `src/config/settings.py` to add `FRONTEND_ENABLED: bool = True` (optional)
+- [x] 11.5 Verify CORS_ORIGINS in `.env` includes both dev (`http://localhost:5173`) and prod URLs
 - [ ] 11.6 Test production build: `cd frontend && npm run build`, then access `http://localhost:8000/chat`
 
 ## 12. Testing and Validation

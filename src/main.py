@@ -4,10 +4,12 @@ import logging
 import logging.handlers
 import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 import structlog
 
 # Import application components
@@ -182,6 +184,21 @@ def create_app() -> FastAPI:
     app.include_router(tasks_router)
     app.include_router(workspaces_router)
     app.include_router(users_router)
+    
+    # Serve frontend static files (if built)
+    frontend_dist_path = Path(__file__).parent.parent / "frontend" / "dist"
+    if frontend_dist_path.exists():
+        logger.info(f"Serving frontend static files from: {frontend_dist_path}")
+        app.mount(
+            "/chat",
+            StaticFiles(directory=str(frontend_dist_path), html=True),
+            name="chat",
+        )
+    else:
+        logger.warning(
+            f"Frontend dist directory not found at: {frontend_dist_path}. "
+            "Web chat UI will not be available. Run 'cd frontend && npm run build' to build it."
+        )
     
     # Domain exception handler (for our custom exceptions)
     @app.exception_handler(DomainException)

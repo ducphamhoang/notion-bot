@@ -11,6 +11,7 @@ Core task management APIs for Notion integration.
 - ✅ Structured error handling
 - ✅ Health checks and observability
 - ✅ Unit and integration tests
+- ✅ **Web Chat UI** - Browser-based chat interface for task management
 
 ## Architecture
 
@@ -106,9 +107,48 @@ poetry run python src/main.py
 | `API_PORT` | No | API server port (default: 8000) |
 | `LOG_LEVEL` | No | Logging level (default: INFO) |
 
+## Web Chat UI
+
+Access the web-based chat interface at: **http://localhost:8000/chat**
+
+The web chat UI provides an intuitive way to interact with your Notion tasks through a chat-like interface using slash commands.
+
+### Quick Start
+
+1. **Build the frontend** (first time only):
+   ```bash
+   cd frontend
+   npm install
+   npm run build
+   cd ..
+   ```
+
+2. **Start the backend** (if not running):
+   ```bash
+   poetry run python src/main.py
+   ```
+
+3. **Open in browser**: Navigate to `http://localhost:8000/chat`
+
+4. **Configure settings**: Click the settings icon (⚙️) and enter:
+   - Your Notion API Key (from backend `.env`)
+   - Your Notion Database ID
+
+5. **Start chatting**: Type commands like `/task list` or `/task create title:"My task"`
+
+### Available Commands
+
+- `/task list [status:...] [priority:...]` - List tasks with optional filters
+- `/task create title:"..." [priority:...] [assignee_id:...]` - Create a new task
+- `/task update <task_id> [status:...] [priority:...]` - Update a task
+- `/task delete <task_id>` - Delete a task
+
+See [frontend/README.md](frontend/README.md) for detailed documentation.
+
 ## API Documentation
 
 Once the server is running, visit:
+- **Web Chat UI**: http://localhost:8000/chat _(recommended)_
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 
